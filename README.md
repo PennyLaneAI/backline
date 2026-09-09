@@ -120,13 +120,12 @@ Backline is the work of [many contributors](https://github.com/PennyLaneAI/backl
 If you are doing research using Backline and PennyLane, please cite our papers:
 
 ```
-@article{tk*jlee*
+@article{lee2026backline,
   title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
-  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
+  author={Lee, Joseph K. L. and Malekmohammadi, Mehrdad and Zheng, Hong-Sheng and Shu, Shuli and Doumbia, Cheick and Szenes, Kalman and Zamani Abnili, Mehran and Ainsworth, Thomas and Seymour, Matthew and Germain, Thomas and Neuhaus, Leonhard and Izaac, Josh and O'Riordan, Lee J.},
   journal={arXiv preprint arXiv:tk},
   year={2026}
 }
-
 ```
 
 ## License and acknowledgements
