@@ -114,9 +114,8 @@ sudo apt install clang lld g++ ccache make git python3-venv python3-dev
 `cmake` and `ninja` arrive through Catalyst's requirements file.
 
 ### Catalyst
-Demo 1 runs on pre-built wheels for PennyLane, Lightning, and Catalyst, so it can be installed
-either [from wheel](#from-wheel) or [from source](#from-source). Every other demo (1a, 2, 2a, 3,
-4, and 5) needs the build flags set below, so those require [from source](#from-source).
+Demo 1 can be executed using either [pre-built wheels](#from-wheel) for PennyLane, Lightning, and Catalyst, or compiled [from source](#from-source). All the remaining demos (1a, 2, 2a, 3,
+4, and 5) require building [from source](#from-source).
 
 #### From wheel
 
