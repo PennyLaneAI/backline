@@ -1,6 +1,6 @@
 # Backline
 
-[Backline](tk) is an open platform for compilation and low-latency execution by AMD and Xanadu that
+[Backline](https://docs.pennylane.ai/en/latest/code/qp_backline.html) is an open platform for compilation and low-latency execution by AMD and Xanadu that
 dynamically connects quantum workloads to the right classical engine.
 
 With PennyLane and Backline, anyone can write a QEC encoder or decoder from Python, test it with
@@ -15,7 +15,8 @@ increasingly optimized and low-level code.
 > [!NOTE]
 > The core Backline implementation and source code lives natively within the PennyLane and Catalyst
 > repositories. This repository holds the demonstrations, benchmarks, and the cross-build system
-> accompanying the manuscript [*Paper name*](tk).
+> accompanying the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"*update the
+> link*](tk).
 
 > [!NOTE]
 > Backline is currently under heavy development — if you have suggestions on the API or use-cases
@@ -25,7 +26,7 @@ increasingly optimized and low-level code.
 
 ## Key Features
 
-* **Single-digit microsecond latency**: Achieve under 3-microsecond end-to-end loops. Backline
+* **Single-digit microsecond latency**: Achieve under **3-μs** end-to-end loops. Backline
   treats CPUs and GPUs as highly responsive endpoints to support the tight co-processing needed
   for QEC backup decoding.
 
@@ -41,12 +42,12 @@ increasingly optimized and low-level code.
 
 ## Getting started
 
-Once Backline is [installed](#installation), you can get started by checking out the [Backline tutorial](https://pennylane.ai/demos/backline), then working your way through the
+Once Backline is [installed](#installation), you can get started by checking out the [Backline tutorial*update link*](https://pennylane.ai/demos/backline), then working your way through the
 [demos in this repository](demos/README.md). To reproduce the paper, run those and the
 [benchmarks](benchmarks/README.md).
 
 Also make sure to check out the [technical documentation](https://docs.pennylane.ai/en/latest/code/qp_backline.html),
-[technical manuscript](tk), and [Backline whitepaper](https://xanadu.ai/docs/backline-whitepaper.pdf).
+[technical manuscript*update the link later*](tk), and [Backline whitepaper*update the link later*](https://xanadu.ai/docs/backline-whitepaper.pdf).
 
 ## Architectural overview
 
@@ -73,9 +74,8 @@ traps that have caught agents here before.
 
 ## Repository Overview
 
-This repository contains the benchmark data from the manuscript ["Compiling heterogeneous quantum
-workloads against low-latency fabrics"](https://arxiv.org/abs/tk), as well as the cross-build system
-for reproducing the stack demonstrated.
+This repository contains the benchmark data from the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"*update the link*](https://arxiv.org/abs/tk),
+as well as the cross-build system for reproducing the stack demonstrated.
 
 In addition, a variety of demos are provided, highlighting the compilation, deployment, and
 execution of a single quantum error-corrected PennyLane program onto several machines at once
@@ -86,7 +86,6 @@ with low-latency execution.
   reproduce the results from the manuscript.
 * `data`: the measurements themselves, and the notebook to plot.
 * `demos`: demo programs, spanning from a single CPU machine to FPGA-to-GPU.
-* `paper`: the manuscript (to add).
 * `scripts`: helpers for running the above.
 
 ## Installation
@@ -121,23 +120,18 @@ Backline is the work of [many contributors](https://github.com/PennyLaneAI/backl
 If you are doing research using Backline and PennyLane, please cite our papers:
 
 ```
-@article{tk
-  title={},
-  author={},
+@article{tk*jlee*
+  title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
+  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
   journal={arXiv preprint arXiv:tk},
   year={2026}
 }
 
-@article{bergholm2018pennylane,
-  title={Pennylane: Automatic differentiation of hybrid quantum-classical computations},
-  author={Bergholm, Ville and Izaac, Josh and Schuld, Maria and Gogolin, Christian and Ahmed, Shahnawaz and Ajith, Vishnu and Alam, M Sohaib and Alonso-Linaje, Guillermo and Asadi, Ali and others},
-  journal={arXiv preprint arXiv:1811.04968},
-  year={2018}
-}
 ```
 
 ## License and acknowledgements
 
 Backline is **free** and **open source**, released under the Apache License, Version 2.0.
 
-X, Y, and Z are trademarks of Advanced Micro Devices, Inc.
+AMD, AMD Ryzen, AMD Ryzen Threadripper, AMD Instinct, AMD ROCm, Radeon, Versal, and Xilinx
+are trademarks of Advanced Micro Devices, Inc.
