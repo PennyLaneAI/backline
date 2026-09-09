@@ -1,0 +1,5 @@
+# 2026-08-27T15:42:15+00:00
+# command: demo_4_remote_fpga_to_remote_gpu.py 
+backline     5d05d3f    update-lightning-build  0 modified
+catalyst     960efea78  rniczh/add-mem-for-new-image  0 modified
+pennylane    0.46.0-dev81 installed, not a checkout

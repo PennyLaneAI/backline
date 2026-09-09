@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+#
+# provider: native — reference THIS machine's own headers and libraries.
+#
+# WHY THIS IS A PROVIDER AND NOT A SPECIAL CASE
+# ---------------------------------------------
+# "Native" in this tree is not a mode; it is a target whose sysroot happens to be the
+# build host (see docs/01-concepts.md). Keeping it that way means one set of recipes, one
+# verifier and one bundler, so there is only one set of bugs.
+#
+# But "where does this machine keep its headers and libraries" is not the same answer
+# everywhere, and a target description cannot compute — descriptions are inert data, by
+# design and for security. On Linux the answer is '/'. On macOS it is emphatically not:
+# since Big Sur the system libraries have no on-disk files at all, living only inside the
+# dyld shared cache, and what you compile against is the SDK that ships with the Command
+# Line Tools. A description saying `dir` with `path=/` is therefore correct on one
+# platform and wrong on the other, and the wrongness was not subtle —
+#
+#     ERROR: '/' exists but contains no C library, so it cannot be a sysroot.
+#       Looked for libc.so*, libc.a or ld-musl-*.so* in:
+#              /usr/lib ...
+#
+# — reported on a Mac whose C library works perfectly.
+#
+# Asking a tool where the sysroot is, rather than encoding a path, is the same rule this
+# tree already applies to the toolchain: tools/detect-host.sh calls
+# `clang -print-resource-dir` instead of hardcoding /usr/lib/llvm-18. `xcrun
+# --show-sdk-path` is the macOS equivalent, and it is correct across Xcode versions,
+# Command Line Tools-only installs, and machines with several SDKs.
+#
+# So one description — targets/example-native.conf — now works unchanged on both, which
+# is what "native is just a target" has to mean if it is to be true.
+#
+# ARGUMENTS
+#   path=<dir>   override the discovered root entirely (escape hatch; rarely needed)
+#
+# Nothing is copied: like `dir` in its default mode, this only symlinks, so no disk is
+# spent duplicating a tree that is already on this machine.
+#
+# ROOT: not needed.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[native] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[native] %s\n' "$*"; }
+
+path=""
+for kv in $ARGS; do
+  case $kv in
+    path=*) path=${kv#path=} ;;
+    *) die "unrecognised argument '$kv'. Supported: path=
+       This provider discovers the host's sysroot by itself; path= is only for
+       overriding that discovery." ;;
+  esac
+done
+
+# ── discover it ──────────────────────────────────────────────────────────────
+if [[ -z $path ]]; then
+  case $(uname -s) in
+    Darwin)
+      command -v xcrun >/dev/null 2>&1 \
+        || die "xcrun was not found, so the macOS SDK path cannot be discovered.
+       The Command Line Tools provide both:
+              xcode-select --install
+       Or name the SDK explicitly:
+              SYSROOT_PROVIDER_ARGS=\"path=\$(xcrun --show-sdk-path)\""
+      path=$(xcrun --show-sdk-path 2>/dev/null) \
+        || die "'xcrun --show-sdk-path' failed. If Xcode was moved or replaced, re-point it:
+              sudo xcode-select --reset"
+      [[ -n $path ]] || die "'xcrun --show-sdk-path' printed nothing.
+       Try 'sudo xcode-select --reset', or name the SDK with path=."
+      log "macOS SDK, via xcrun --show-sdk-path"
+      ;;
+    *)
+      # Every other platform this tree targets keeps its development files under the
+      # real root, which is what --sysroot=/ has always meant.
+      path=/
+      ;;
+  esac
+fi
+
+[[ -d $path ]] || die "'$path' is not a directory."
+
+abs_path=$(cd "$path" && pwd) || die "cannot resolve '$path'"
+
+# ── reference it ─────────────────────────────────────────────────────────────
+# Symlink, never copy. Deliberately the same behaviour as `dir` in mode=reference, and
+# the same guard: a real directory here is somebody's fetched sysroot, and replacing it
+# with a symlink would destroy it silently.
+mkdir -p "$(dirname "$DEST")"
+if [[ -L $DEST ]]; then
+  rm -f "$DEST"
+elif [[ -e $DEST ]]; then
+  die "'$DEST' already exists as a real directory, so it cannot be replaced with
+       a symlink without destroying it. If it is a stale sysroot from another
+       provider, remove it deliberately:
+         make sysroot-clean TARGET=<name>"
+fi
+ln -s "$abs_path" "$DEST" || die "could not symlink '$DEST' -> '$abs_path'"
+
+log "referencing $abs_path (no copy made)"
+log "done -> $DEST"

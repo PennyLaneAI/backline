@@ -1,0 +1,86 @@
+# The machines the demos and the benchmarks run on, and the ports they are reached at.
+# One table per machine, so this is the hardware taken as a set, distinct from the `fabric`, the
+# RDMA network they talk over, and from a node, one role placed on one of them.
+#
+# Both demos/placement.py and benchmarks/placement.py read this file and turn its tables into node
+# dictionaries, so pointing the stack at different hardware is an edit here alone. Each of those
+# modules then adds the nodes only it uses.
+#
+# Every [<machine>.executor] table becomes that node's executor_options, taking `port` from [ports]
+# and resolving each `deploy` entry against the bundle root. A machine naming no `user` is reached
+# as the current login account. A `config` value is the transport backend's key=value;... string,
+# and `fabric` is the machine's address on the RDMA network, a different network from the `host`
+# above it, which is where SSH reaches it for deployment.
+
+[paths]
+# CATALYST_ROOT and BACKLINE_BUNDLES override these. `bundles` holds one subdirectory per machine,
+# each that machine's stack, placed in its workspace before its executor starts.
+catalyst = "~/catalyst"
+# Where `make bundle` publishes, relative to the repository root. Every bundle xbuild builds
+# is linked here under its own name, whichever machine it was built for, which is the shape a
+# `deploy` entry below is resolved against. BACKLINE_BUNDLES overrides it with an absolute path.
+bundles = "config/xbuild/build/bundles"
+
+[ports]
+# One executor per node. `ssh -L port:localhost:port` applies the value at both ends of the tunnel,
+# so two nodes sharing one collide on the compiling machine even when they execute on different
+# hosts. Pinning the value permits the compiler to settle an executor's address before deployment.
+oob = 7760            # a remote coprocessor's out-of-band handshake
+local_oob = 18590     # the same for a coprocessor in the calling process, over loopback
+cpu_ctrl = 9810       # demos: the controller on the server's CPU
+vpk = 9811            # both: every arrangement that drives the board, never used together
+cpu_coproc = 9812     # benchmarks: the coprocessor on the server's CPU
+gpu_coproc = 9813     # both: the coprocessor on the server's GPU
+
+# The local machine. Both roles execute inside the calling process, no executor being launched, and
+# reach each other through `rxe0`, a soft-RoCE device, so no RDMA-capable NIC is needed. `gid` is an
+# index into the device's GID table, and 1 is its IPv4 RoCE v2 entry. See demos/README.md to make
+# one. This machine runs no executor, so it has no [local.executor] table.
+[local]
+config = "dev=rxe0;gid=1"
+fabric = "127.0.0.1"
+
+# An x86_64 server carrying an AMD GPU and a fast NIC.
+[server]
+config = "dev=mlx5_1;gid=3;cpu_pin=4;rt=1"
+fabric = "192.168.1.2"
+
+[server.executor]
+host = "192.168.3.14"
+triple = "x86_64-unknown-linux-gnu"
+sudo = true
+deploy = ["threadripper-bundle"]
+# numactl keeps the process and its buffers on the NIC's NUMA node, off the inter-die interconnect.
+executor_bin = "numactl -N 0 -m 0 ./catalyst-executor"
+
+[server.executor.env]
+# "." is the deployed bundle, beside the executor. /opt/rocm/lib is where the GPU backend's HIP
+# runtime lives.
+LD_LIBRARY_PATH = ".:/opt/rocm/lib"
+
+# A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
+# executor requires /dev/mem and /dev/xib0.
+[vpk]
+# The hwhs engine posts the syndrome and detects the reply itself, out of BRAM.
+config = "dev=xib_0;gid=1;sq_mem=bram;data_mem=bram;reply_mem=bram;reply_poll=hw;stride_log2=6"
+# The same board with its queues in PL, for the CPU posting through ibverbs and polling the reply.
+config_swhs = "dev=xib_0;gid=1;sq_mem=pl;data_mem=pl;reply_mem=pl;stride_log2=6"
+
+[vpk.executor]
+host = "192.168.3.15"
+user = "petalinux"
+triple = "aarch64-unknown-linux-gnu"
+sudo = true
+deploy = ["vpk-bundle"]
+
+# Absent the XMM_* queue placement, the backend fails at startup with "XMM_SQ_TYPE memtype not
+# found".
+[vpk.executor.env]
+XMM_SQ_TYPE = "PL"
+XMM_RQ_TYPE = "PL"
+XMM_CQ_TYPE = "PL"
+XMM_APP_MAX_QP = "4"
+XMM_APP_RQ_SGE = "1"
+XMM_SQ_DEPTH = "64"
+XMM_RQ_DEPTH = "128"
+HWHS_RTT_WARMUP = "0"

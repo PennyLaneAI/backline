@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+#
+# provider: tar — unpack a sysroot from a tarball.
+#
+# WHEN TO USE
+# Use this when the target machine exists but the build host cannot reach it:
+# an airgapped lab, a customer site, a board on a bench with no route to CI.
+# Someone runs one command on the device, moves a file by any means (USB stick,
+# email, artifact store), and the build host consumes it.
+#
+# It is also the right provider for a vendor-supplied BSP sysroot that arrives as
+# a .tar.gz, and for a CI cache: build the sysroot once, publish the tarball, and
+# have every subsequent CI run fetch it instead of re-copying a rootfs.
+#
+# ARGS
+#   path=/abs/or/rel/sysroot.tar.gz    required unless url= given
+#   url=https://…/sysroot.tar.gz      optional; downloaded with curl or wget
+#   strip=1                           optional; tar --strip-components (default 0)
+#   sha256=<hex>                      optional but recommended; verified before unpacking
+#
+# EXAMPLE
+#   SYSROOT_PROVIDER=tar
+#   SYSROOT_PROVIDER_ARGS="path=/mnt/share/my-board-rootfs.tar.gz sha256=ab12…"
+#
+# TO PRODUCE SUCH A TARBALL ON THE TARGET
+#   tar -czf /tmp/sysroot.tar.gz -C / \
+#       --exclude='lib/modules' --exclude='lib/firmware' \
+#       lib lib64 usr/lib usr/lib64 usr/include 2>/dev/null
+#   # the 2>/dev/null swallows "file changed as we read it" on a live system,
+#   # which is expected and harmless for library directories.
+#
+# ROOT: not needed.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[tar] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[tar] %s\n' "$*"; }
+
+path="" url="" strip=0 sha256=""
+for kv in $ARGS; do
+  case $kv in
+    path=*)   path=${kv#path=} ;;
+    url=*)    url=${kv#url=} ;;
+    strip=*)  strip=${kv#strip=} ;;
+    sha256=*) sha256=${kv#sha256=} ;;
+    *) die "unrecognised argument '$kv'. Supported: path= url= strip= sha256=" ;;
+  esac
+done
+
+TMP=""
+cleanup() { [[ -n $TMP && -d $TMP ]] && rm -rf "$TMP"; }
+trap cleanup EXIT
+
+# ── obtain the archive ───────────────────────────────────────────────────────
+if [[ -n $url ]]; then
+  TMP=$(mktemp -d "${TMPDIR:-/tmp}/crossbuild-tar-XXXXXX")
+  path="$TMP/sysroot.tar"
+  log "downloading $url"
+  if command -v curl >/dev/null; then
+    curl -fL --progress-bar -o "$path" "$url" || die "download failed: $url"
+  elif command -v wget >/dev/null; then
+    wget -q --show-progress -O "$path" "$url" || die "download failed: $url"
+  else
+    die "neither curl nor wget is available to fetch url=$url"
+  fi
+fi
+
+[[ -n $path ]]  || die "one of path= or url= is required.
+       e.g. SYSROOT_PROVIDER_ARGS=\"path=/mnt/share/rootfs.tar.gz\""
+[[ -r $path ]]  || die "cannot read archive: $path"
+
+# ── integrity ────────────────────────────────────────────────────────────────
+# Optional but strongly encouraged. A sysroot silently truncated in transit
+# produces missing-symbol errors at link time that look like source bugs; you can
+# lose an afternoon to a bad copy. One hash turns that into an immediate,
+# unambiguous failure.
+if [[ -n $sha256 ]]; then
+  log "verifying sha256"
+  if command -v sha256sum >/dev/null; then
+    actual=$(sha256sum "$path" | awk '{print $1}')
+  elif command -v shasum >/dev/null; then
+    actual=$(shasum -a 256 "$path" | awk '{print $1}')
+  else
+    die "sha256= was given but neither sha256sum nor shasum is available to check it.
+       Remove sha256= to skip verification (not recommended)."
+  fi
+  [[ $actual == "$sha256" ]] || die "sha256 mismatch for $path
+       expected: $sha256
+       actual:   $actual
+       The archive is corrupt or is not the file you think it is. Do not proceed."
+else
+  log "no sha256= given; skipping integrity check (consider adding one)"
+fi
+
+mkdir -p "$DEST" || die "cannot create '$DEST'"
+
+# ── unpack ───────────────────────────────────────────────────────────────────
+# -p preserves permissions. Not cosmetic: the ELF interpreter must stay
+# executable, or every binary you build will fail to start with a permission
+# error that appears to be about the binary rather than the loader.
+#
+# tar autodetects gzip/xz/zstd/bzip2 compression from the magic bytes in every
+# tar implementation of the last fifteen years, so we do not switch on the file
+# extension — extensions lie, magic bytes do not.
+log "unpacking $path -> $DEST"
+tar -xpf "$path" -C "$DEST" --strip-components="$strip" \
+  || die "tar extraction failed. If the archive has a leading directory (e.g.
+       ./sysroot/usr/...), pass strip=1 to remove it."
+
+# Verify the shape immediately, while the cause is still obvious. Without this,
+# a strip= mistake surfaces later as "stdio.h not found", which sends people
+# looking at include paths instead of at the extraction.
+if [[ ! -d $DEST/usr && ! -d $DEST/lib && ! -d $DEST/usr/include ]]; then
+  die "extraction produced no usr/ or lib/ at the top of '$DEST'.
+       Contents: $(ls -1 "$DEST" 2>/dev/null | head -5 | tr '\n' ' ')
+       The archive probably has a leading directory — try strip=1."
+fi
+
+log "done -> $DEST"

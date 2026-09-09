@@ -1,0 +1,13 @@
+
+# ==== gpu-coproc @ 192.168.3.14:9813 | ws=/path/to/executor-workspace | 2026-08-27 16:29:01 ====
+# plugins: librt_transport.so, librt_capi.so, librdma_triton_decoder.so
+# [launcher] gpu-coproc: teeing output -> catalyst-executor-gpu-coproc-192.168.3.14-2026-08-27_16-29-01.log
+# [launcher] gpu-coproc: starting executor on 192.168.3.14:9813 (tunnel 127.0.0.1:9813 -> remote:9813)
+catalyst-executor: loaded /path/to/executor-workspace/librt_transport.so
+catalyst-executor: loaded /path/to/executor-workspace/librt_capi.so
+catalyst-executor: loaded /path/to/executor-workspace/librdma_triton_decoder.so
+Listening on 127.0.0.1:9813
+# [launcher] gpu-coproc: ready in 0.2s — address 127.0.0.1:9813
+[127.0.0.1:9813] executor ready, waiting for connections
+[127.0.0.1:9813] accepted connection from 127.0.0.1:44984 on pid 3776208, waiting for next connection
+# [launcher] gpu-coproc: stopping executor + closing tunnel

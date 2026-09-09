@@ -1,0 +1,30 @@
+# Everything generated. `rm -rf build` is a complete reset, and nothing generated
+# is ever mistaken for source.
+build/
+
+# Local machine-specific paths (see config.mk.example).
+config.mk
+
+# Rejected probe output and probe logs. These contain hostnames and usernames.
+#
+# A SUCCESSFUL probe is NOT ignored, and cannot be: it writes targets/<name>.conf, which is
+# the same namespace as the hand-written target descriptions that are meant to be committed.
+# There is no pattern that hides one and keeps the other. So a fresh probe result is a
+# tracked file containing the machine's hostname and your username, and the only thing
+# standing between it and a commit is that probe-over-ssh.sh says so, loudly, at the end.
+# If you are looking for the guard, this comment is it.
+targets/probe-*.conf
+
+# Every probe of an existing description leaves one of these beside it, holding the file as
+# it was. They carry whatever the description carried, hostnames included, and AGENTS.md
+# already asks that they never be committed.
+targets/*.conf.bak.*
+targets/*.rejected
+*.probe.log
+
+# Editor and OS noise.
+*.swp
+*~
+.DS_Store
+__pycache__/
+*.pyc

@@ -1,0 +1,12 @@
+
+# ==== gpu-coproc @ 192.168.3.14:9813 | ws=/path/to/executor-workspace | 2026-08-27 15:42:24 ====
+# plugins: librt_transport.so, librt_capi.so
+# [launcher] gpu-coproc: teeing output -> catalyst-executor-gpu-coproc-192.168.3.14-2026-08-27_15-42-24.log
+# [launcher] gpu-coproc: starting executor on 192.168.3.14:9813 (tunnel 127.0.0.1:9813 -> remote:9813)
+catalyst-executor: loaded /path/to/executor-workspace/librt_transport.so
+catalyst-executor: loaded /path/to/executor-workspace/librt_capi.so
+Listening on 127.0.0.1:9813
+# [launcher] gpu-coproc: ready in 0.2s — address 127.0.0.1:9813
+[127.0.0.1:9813] executor ready, waiting for connections
+[127.0.0.1:9813] accepted connection from 127.0.0.1:54150 on pid 3769079, waiting for next connection
+# [launcher] gpu-coproc: stopping executor + closing tunnel

@@ -1,0 +1,22 @@
+
+# ==== fpga-controller @ 192.168.3.15:9811 | ws=/path/to/executor-workspace | 2026-08-27 16:29:01 ====
+# plugins: librt_transport.so, librt_capi.so, librtd_null_qubit.so
+# [launcher] fpga-controller: teeing output -> catalyst-executor-fpga-controller-192.168.3.15-2026-08-27_16-29-01.log
+# [launcher] fpga-controller: starting executor on 192.168.3.15:9811 (tunnel 127.0.0.1:9811 -> remote:9811)
+catalyst-executor: loaded /path/to/executor-workspace/librt_transport.so
+catalyst-executor: loaded /path/to/executor-workspace/librt_capi.so
+catalyst-executor: loaded /path/to/executor-workspace/librtd_null_qubit.so
+Listening on 127.0.0.1:9811
+# [launcher] fpga-controller: ready in 0.3s — address 127.0.0.1:9811
+[127.0.0.1:9811] executor ready, waiting for connections
+[127.0.0.1:9811] accepted connection from 127.0.0.1:45162 on pid 863, waiting for next connection
+
+=== engine RTT (n=16000, 0 warmup dropped, hardware handshake) ===
+  min          4595 ns
+  p50          4750 ns
+  p95          5050 ns
+  p99          5350 ns
+  p99.9        5530 ns
+  max      96567640 ns
+  mean        10843 ns
+# [launcher] fpga-controller: stopping executor + closing tunnel

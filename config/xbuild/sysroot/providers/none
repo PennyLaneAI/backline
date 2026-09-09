@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# provider: none — assert that the sysroot is not this build system's concern.
+#
+# This provider exists so that "I already have a sysroot, managed by something
+# else" is a first-class, *declared* configuration rather than a workaround.
+#
+# Use it with SYSROOT_DIR pointing at the tree:
+#
+#   SYSROOT_PROVIDER=none
+#   SYSROOT_DIR=/opt/vendor-bsp/sysroot
+#
+# It differs from the `dir` provider in intent, and the difference is worth
+# keeping. `dir` says "copy or link this into my build tree, and I will manage the
+# result". `none` says "this path is managed entirely outside my lifecycle — do not
+# touch it, do not normalise it, do not clean it". For a shared, read-only, or
+# expensively-produced sysroot, that guarantee is what you want.
+#
+# A build system that cannot be told to stay out of the way is not general.
+#
+# ROOT: not needed.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+log() { printf '[none] %s\n' "$*"; }
+
+if [[ -n ${ARGS// /} ]]; then
+  printf '\n[none] ERROR: this provider takes no arguments, but got: %s\n' "$ARGS" >&2
+  printf '       Point SYSROOT_DIR at your tree instead. If you want this build\n' >&2
+  printf '       system to fetch or copy something, use a provider that does that\n' >&2
+  printf '       (dir, tar, ssh-rsync, oci).\n' >&2
+  exit 1
+fi
+
+if [[ ! -d $DEST ]]; then
+  cat >&2 <<EOF
+
+[none] ERROR: SYSROOT_PROVIDER=none means "the sysroot already exists and I manage
+       it myself", but the configured path does not exist:
+
+         $DEST
+
+  Either:
+    * set SYSROOT_DIR in the target description to the correct existing path, or
+    * choose a provider that can create one:
+        ssh-rsync   copy from the live target        (best if the target exists)
+        tar         unpack an archive
+        dir         reference an SDK/staging tree
+        oci         extract a container image
+        debootstrap construct a Debian-family root   (needs root)
+      See sysroot/README.md.
+EOF
+  exit 1
+fi
+
+log "using externally managed sysroot: $DEST"
+log "(not fetched, not copied, not normalised — this build will only read it)"

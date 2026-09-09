@@ -1,0 +1,62 @@
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rz_to_rx_cliff decomposition rule: Graph-based decomposition expects an Operator2 instance, got ChangeOpBasis(compute_op=Hadamard, target_op=RX, uncompute_op=Hadamard) of type <class 'pennylane.decomposition.resources.CompressedResourceOp'>
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rz_to_ry_cliff decomposition rule: Graph-based decomposition expects an Operator2 instance, got ChangeOpBasis(compute_op=Prod(resources={S(wires=AbstractWires(1)): 1, H(wires=AbstractWires(1)): 1}), target_op=RY, uncompute_op=Prod(resources={Adjoint(S): 1, H(wires=AbstractWires(1)): 1})) of type <class 'pennylane.decomposition.resources.CompressedResourceOp'>
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rx_to_rot decomposition rule: _rx_to_rot_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rx_to_rz_ry decomposition rule: _rx_to_rz_ry_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rx_to_ppr decomposition rule: _rx_to_ppr_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rx_to_ry_cliff decomposition rule: _rx_to_ry_cliff_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _rx_to_rz_cliff decomposition rule: _rx_to_rz_cliff_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _ry_to_rot decomposition rule: _ry_to_rot_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _ry_to_rz_rx decomposition rule: _ry_to_rz_rx_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _ry_to_ppr decomposition rule: _ry_to_ppr_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _ry_to_rx_cliff decomposition rule: _ry_to_rx_cliff_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:135: UserWarning: Failed to get resources for the _ry_to_rz_cliff decomposition rule: _ry_to_rz_cliff_resources() takes 0 positional arguments but 1 was given
+  warnings.warn(f"Failed to get resources for the {rule.name} decomposition rule: {e}")
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:319: UserWarning: Failed to lower the _rz_to_rx_cliff decomposition rule for RZ: Graph-based decomposition expects an Operator2 instance, got ChangeOpBasis(compute_op=Hadamard, target_op=RX, uncompute_op=Hadamard) of type <class 'pennylane.decomposition.resources.CompressedResourceOp'>
+  warnings.warn(
+/path/to/catalyst/frontend/catalyst/decomposition/decomposition_rules.py:319: UserWarning: Failed to lower the _rz_to_ry_cliff decomposition rule for RZ: Graph-based decomposition expects an Operator2 instance, got ChangeOpBasis(compute_op=Prod(resources={S(wires=AbstractWires(1)): 1, H(wires=AbstractWires(1)): 1}), target_op=RY, uncompute_op=Prod(resources={Adjoint(S): 1, H(wires=AbstractWires(1)): 1})) of type <class 'pennylane.decomposition.resources.CompressedResourceOp'>
+  warnings.warn(
+[fpga-controller] catalyst-executor: loaded /path/to/executor-workspace/librt_transport.so
+[fpga-controller] catalyst-executor: loaded /path/to/executor-workspace/librt_capi.so
+[fpga-controller] catalyst-executor: loaded /path/to/executor-workspace/librtd_null_qubit.so
+[fpga-controller] Listening on 127.0.0.1:9811
+[fpga-controller] [127.0.0.1:9811] executor ready, waiting for connections
+scp: Connection closed
+[scp] the SFTP backend is declining. Retrying it with the legacy protocol (scp -O), which hosts without an SFTP subsystem need
+[gpu-coproc] catalyst-executor: loaded /path/to/executor-workspace/librt_transport.so
+[gpu-coproc] catalyst-executor: loaded /path/to/executor-workspace/librt_capi.so
+[gpu-coproc] catalyst-executor: loaded /path/to/executor-workspace/librdma_triton_decoder.so
+[gpu-coproc] Listening on 127.0.0.1:9813
+[gpu-coproc] [127.0.0.1:9813] executor ready, waiting for connections
+[gpu-coproc] [127.0.0.1:9813] accepted connection from 127.0.0.1:44984 on pid 3776208, waiting for next connection
+[fpga-controller] [127.0.0.1:9811] accepted connection from 127.0.0.1:45162 on pid 863, waiting for next connection
+[fpga-controller] 
+[fpga-controller] === engine RTT (n=16000, 0 warmup dropped, hardware handshake) ===
+[fpga-controller]   min          4595 ns
+[fpga-controller]   p50          4750 ns
+[fpga-controller]   p95          5050 ns
+[fpga-controller]   p99          5350 ns
+[fpga-controller]   p99.9        5530 ns
+[fpga-controller]   max      96567640 ns
+[fpga-controller]   mean        10843 ns
+samples: [[0 0 0]
+ [0 0 0]
+ [0 0 0]
+ ...
+ [0 0 0]
+ [0 0 0]
+ [0 0 0]]
+JIT session error: FD-transport disconnected
+JIT session error: disconnecting
+JIT session error: FD-transport disconnected
+JIT session error: disconnecting

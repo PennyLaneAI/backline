@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+#
+# provider: dir — use a sysroot tree that already exists on this machine.
+#
+# WHEN TO USE
+#   * A Yocto/OpenEmbedded SDK has been installed and left a staging sysroot.
+#   * Buildroot has produced output/staging.
+#   * A vendor BSP shipped an unpacked sysroot.
+#   * A native build, where the sysroot is literally "/".
+#   * CI mounted a cached sysroot into the container.
+#
+# This provider is what makes the build system composable rather than totalising.
+# The original design *had* to build its own sysroot because building it was the
+# only path implemented; if you already had a perfectly good one — as anyone using
+# a vendor SDK does — the system had no way to accept it. Being able to say
+# "someone else already solved this, consume their output" is a design property
+# worth having explicitly.
+#
+# ARGS
+#   path=/abs/path        required. The sysroot root (contains usr/, lib/, …).
+#   mode=reference|copy   optional, default reference.
+#
+#     reference — do not copy; symlink build/sysroots/<target> at path.
+#                 Instant, zero disk. Correct when the tree is stable and
+#                 read-only, which is the normal case for an SDK.
+#
+#     copy      — copy the tree into build/sysroots/<target>.
+#                 Slower and uses disk, but gives you an immutable snapshot.
+#                 Use it when the source may change under you (an actively
+#                 rebuilt Buildroot output), or when normalisation must rewrite
+#                 symlinks and the source tree must not be modified.
+#
+# EXAMPLE
+#   SYSROOT_PROVIDER=dir
+#   SYSROOT_PROVIDER_ARGS="path=/opt/poky/3.1/sysroots/aarch64-poky-linux mode=reference"
+#
+# ROOT: not needed.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[dir] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[dir] %s\n' "$*"; }
+
+path="" mode=reference
+for kv in $ARGS; do
+  case $kv in
+    path=*) path=${kv#path=} ;;
+    mode=*) mode=${kv#mode=} ;;
+    *) die "unrecognised argument '$kv'. Supported: path= mode=" ;;
+  esac
+done
+
+[[ -n $path ]] || die "path= is required.
+       e.g. SYSROOT_PROVIDER_ARGS=\"path=/opt/buildroot/output/staging\""
+[[ -d $path ]] || die "'$path' is not a directory.
+       If this is a Yocto SDK, the sysroot is usually a few levels down, e.g.
+         <sdk>/sysroots/aarch64-poky-linux
+       not the SDK root itself."
+
+case $mode in
+  reference|copy) ;;
+  *) die "mode='$mode' is not valid. Use 'reference' (default) or 'copy'." ;;
+esac
+
+abs_path=$(cd "$path" && pwd) || die "cannot resolve '$path'"
+
+if [[ $mode == reference ]]; then
+  # A symlink, not a bind mount or a copy: needs no privileges and no disk.
+  #
+  # The parent must exist but DEST itself must not, hence the careful dance: an
+  # existing DEST could be a real directory from an earlier run with a different
+  # provider, and silently replacing a directory that may hold a fetched rootfs
+  # would destroy work. So we only remove a symlink, and refuse a real directory.
+  mkdir -p "$(dirname "$DEST")"
+  if [[ -L $DEST ]]; then
+    rm -f "$DEST"
+  elif [[ -e $DEST ]]; then
+    die "'$DEST' already exists as a real directory, so it cannot be replaced with
+       a symlink without destroying it. If it is a stale sysroot from another
+       provider, remove it deliberately:
+         make sysroot-clean TARGET=<name>"
+  fi
+  ln -s "$abs_path" "$DEST" || die "could not symlink '$DEST' -> '$abs_path'"
+  log "referencing $abs_path (no copy made)"
+
+  # Warn, do not fail, on a read-only source. Normalisation may want to rewrite
+  # absolute symlinks; if it cannot, the build usually still works because the
+  # compiler resolves --sysroot-relative paths itself. Failing here would reject a
+  # perfectly usable read-only SDK, which would be worse than the warning.
+  if [[ ! -w $abs_path ]]; then
+    log "note: source is not writable; symlink normalisation will be skipped."
+    log "      If you hit link errors about absolute paths, re-run with mode=copy."
+  fi
+else
+  command -v rsync >/dev/null \
+    || die "mode=copy needs rsync (or use mode=reference, which copies nothing)."
+  mkdir -p "$DEST"
+  log "copying $abs_path -> $DEST (this may take a while)"
+  # -a keeps symlinks as symlinks; --delete makes repeat runs converge rather than
+  # accumulating files that were removed upstream.
+  #
+  # --info=progress2 needs rsync 3.1+ and only draws a progress bar, so it is probed for
+  # and dropped when absent rather than being allowed to fail the copy. macOS 15 replaced
+  # Samba rsync with openrsync (protocol 29), which rejects the flag outright — so
+  # hardcoding it made this provider unusable on a current Mac over a display detail.
+  _progress=""
+  rsync --info=progress2 --version >/dev/null 2>&1 && _progress="--info=progress2"
+  rsync -a --delete $_progress "$abs_path/" "$DEST/" \
+    || die "copy failed; see the error above."
+fi
+
+log "done -> $DEST"

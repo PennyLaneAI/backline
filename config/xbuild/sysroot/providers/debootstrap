@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+#
+# provider: debootstrap — construct a Debian/Ubuntu sysroot from a distro archive.
+#
+# This is the strategy the original build system used exclusively. It is kept
+# because it is genuinely the right tool for one job: targeting a Debian-family
+# machine that does not exist yet, so there is nothing to copy from.
+#
+# It is NOT the default, and that demotion is deliberate. Read this before using it:
+#
+#   * It needs root on the build host (debootstrap, then chroot).
+#   * It needs a network and a reachable archive mirror.
+#   * It only produces Debian-family glibc roots. Yocto, Buildroot, Alpine,
+#     Fedora, and vendor BSPs are all out of reach.
+#   * Cross-architecture needs qemu-user-static + binfmt_misc registered on the
+#     host kernel, which a container often cannot do.
+#   * Most importantly: it produces an APPROXIMATION. You pick a release codename
+#     and hope its glibc matches the target's. The original tree had a
+#     glibc→codename table and warned when your choice disagreed with the probe,
+#     which you could accept and proceed with — building against a libc the target
+#     does not have. If the target exists, use ssh-rsync and eliminate this whole
+#     class of error.
+#
+# ARGS
+#   release=<codename>    required, e.g. bookworm, noble, trixie
+#   arch=<deb arch>       optional; derived from TARGET_ARCH if omitted
+#   mirror=<url>          optional; a sensible default is chosen per arch
+#   packages="a b c"      optional; extra packages installed into the root
+#   variant=<v>           optional; debootstrap --variant, default minbase
+#
+# EXAMPLE
+#   SYSROOT_PROVIDER=debootstrap
+#   SYSROOT_PROVIDER_ARGS="release=bookworm arch=arm64 packages=libibverbs-dev"
+#
+# ROOT: REQUIRED.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[debootstrap] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[debootstrap] %s\n' "$*"; }
+
+release="" deb_arch="" mirror="" packages="" variant=minbase
+for kv in $ARGS; do
+  case $kv in
+    release=*)  release=${kv#release=} ;;
+    arch=*)     deb_arch=${kv#arch=} ;;
+    mirror=*)   mirror=${kv#mirror=} ;;
+    packages=*) packages=${kv#packages=} ;;
+    variant=*)  variant=${kv#variant=} ;;
+    *) die "unrecognised argument '$kv'. Supported: release= arch= mirror= packages= variant=" ;;
+  esac
+done
+
+[[ -n $release ]] || die "release= is required (e.g. release=bookworm).
+       There is no default on purpose: silently picking a release means silently
+       picking a glibc version, and a wrong guess only shows up as a runtime
+       symbol error on the target."
+
+# Read TARGET_ARCH out of the description so the caller need not repeat it, via
+# load_conf so multi-word values are safe.
+TARGET_ARCH=""; TARGET_LIBC=""
+if [[ -n $CONF && -r $CONF ]]; then
+  _here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+  # shellcheck source=/dev/null
+  . "$_here/tools/load-conf.sh"
+  load_conf "$CONF" || exit 1
+fi
+
+if [[ -n ${TARGET_LIBC:-} && $TARGET_LIBC != glibc ]]; then
+  die "this target declares TARGET_LIBC=$TARGET_LIBC, but debootstrap can only
+       produce glibc (Debian-family) roots. Use a provider that can supply a
+       $TARGET_LIBC sysroot — 'dir' for a Buildroot/Yocto staging tree, 'oci' for
+       an Alpine image, or 'ssh-rsync'/'tar' to copy from the real device."
+fi
+
+# Map uname-style arch to Debian's arch names. These genuinely differ (aarch64 vs
+# arm64) and mixing them up gives "E: Invalid architecture", which does not hint
+# at which of the two spellings is wanted.
+if [[ -z $deb_arch ]]; then
+  # From the shared table (tools/arch-table.sh), not a third private copy of the same
+  # mapping. uname-style and Debian-style names genuinely differ (aarch64 vs arm64) and
+  # mixing them gives "E: Invalid architecture", which does not say which spelling it
+  # wanted.
+  _here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+  deb_arch=$("$_here/tools/arch-table.sh" deb-arch "${TARGET_ARCH:-}" 2>/dev/null || true)
+  [[ -n $deb_arch ]] || die "cannot map TARGET_ARCH='${TARGET_ARCH:-}' to a Debian architecture.
+       Pass it explicitly, e.g. arch=arm64 — or add the mapping to tools/arch-table.sh.
+       Known: $("$_here/tools/arch-table.sh" known 2>/dev/null)"
+fi
+
+# Ubuntu splits its archive: amd64/i386 on archive.ubuntu.com, everything else on
+# ports.ubuntu.com. Debian serves all architectures from one host. Choosing the
+# wrong one produces a 404 mid-bootstrap.
+if [[ -z $mirror ]]; then
+  case $release in
+    # Ubuntu codenames, oldest supported upward.
+    focal|jammy|noble|oracular|plucky)
+      if [[ $deb_arch == amd64 || $deb_arch == i386 ]]; then
+        mirror=http://archive.ubuntu.com/ubuntu/
+      else
+        mirror=http://ports.ubuntu.com/ubuntu-ports/
+      fi ;;
+    *)
+      mirror=http://deb.debian.org/debian/ ;;
+  esac
+  log "no mirror= given; using $mirror"
+fi
+
+command -v debootstrap >/dev/null \
+  || die "debootstrap is not installed on this build host.
+       Debian/Ubuntu: sudo apt install debootstrap
+       Fedora:        sudo dnf install debootstrap
+       Or use a provider that needs no root — see sysroot/README.md."
+
+# Check for root up front with a specific explanation, rather than letting
+# debootstrap fail thirty seconds in with "E: Cannot mount /proc".
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+  command -v sudo >/dev/null \
+    || die "this provider needs root and sudo is not available.
+       Alternatives that need no root: ssh-rsync, tar, dir, oci."
+  SUDO=sudo
+  log "root is required; commands will run under sudo"
+fi
+
+# Foreign-architecture bootstrap runs target binaries on the host, which needs
+# binfmt_misc + qemu. Detect the need and say so precisely — the failure without
+# it is "Exec format error", which does not mention qemu.
+host_deb_arch=$(dpkg --print-architecture 2>/dev/null || echo unknown)
+if [[ $deb_arch != "$host_deb_arch" ]]; then
+  if [[ ! -d /proc/sys/fs/binfmt_misc ]] || ! ls /proc/sys/fs/binfmt_misc/qemu-* >/dev/null 2>&1; then
+    log "WARNING: building a $deb_arch root on a $host_deb_arch host needs qemu-user-static"
+    log "         with binfmt_misc registered. If the second stage fails with"
+    log "         'Exec format error', install it:"
+    log "           sudo apt install qemu-user-static binfmt-support"
+    log "         In a container, the host kernel must have the handlers registered."
+  fi
+fi
+
+mkdir -p "$(dirname "$DEST")"
+log "bootstrapping $release/$deb_arch from $mirror"
+log "(this downloads a few hundred MB and takes several minutes)"
+
+$SUDO debootstrap --variant="$variant" --arch="$deb_arch" "$release" "$DEST" "$mirror" \
+  || die "debootstrap failed. Common causes:
+       * '$release' is not a valid codename for this mirror
+       * the mirror does not carry '$deb_arch' (Ubuntu non-amd64 needs ports.ubuntu.com)
+       * no network access to $mirror"
+
+# build-essential brings the headers and libstdc++ that make this a *compilation*
+# sysroot rather than just a runtime filesystem.
+log "installing build headers into the root"
+$SUDO chroot "$DEST" apt-get update \
+  || die "apt-get update failed inside the new root (network? mirror?)"
+# shellcheck disable=SC2086
+$SUDO chroot "$DEST" apt-get install -y --no-install-recommends \
+      build-essential libc6-dev $packages \
+  || die "package installation failed inside the root.
+       If you passed packages=, check the names exist for $release/$deb_arch."
+
+# Hand ownership back. debootstrap leaves everything root-owned, which means the
+# unprivileged build that follows cannot read parts of it, and `rm -rf build`
+# fails — a genuinely annoying trap in the original design, which needed a
+# separate sudo-using clean target because of exactly this.
+if [[ -n $SUDO ]]; then
+  log "chowning the tree to $(id -un) so the build (and 'make clean') need no root"
+  $SUDO chown -R "$(id -u):$(id -g)" "$DEST" \
+    || log "WARNING: chown failed; you may need sudo to clean this sysroot later."
+fi
+
+log "done -> $DEST"

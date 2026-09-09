@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Target description template.  Created by: make new-target TARGET=<name>
+#
+# Only TARGET_NAME and TARGET_TRIPLE are mandatory. Everything else has a
+# documented default — run `make show-target TARGET=<name>` to see what the
+# defaults resolved to.
+#
+# STRONGLY PREFERRED: if the machine exists and you can reach it, do not fill this
+# in by hand. Let the machine tell you:
+#
+#     make probe TARGET=<name> SSH=user@host
+#
+# That reads the three values you must not guess — glibc version, C++ ABI level,
+# and ELF interpreter path — off the device itself. A wrong guess at any of them
+# turns a build-time error into a runtime failure on the target, which costs far
+# more to diagnose.
+#
+# Full field reference with rationale: targets/SCHEMA.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+TARGET_NAME=CHANGEME
+TARGET_DESC="describe the machine: what it is, what it runs"
+
+# ── machine ──────────────────────────────────────────────────────────────────
+# REQUIRED. What the compiler is told to emit.
+#   aarch64-linux-gnu    64-bit ARM, glibc
+#   aarch64-linux-musl   64-bit ARM, musl
+#   x86_64-linux-gnu     64-bit x86, glibc
+#   arm-linux-gnueabihf  32-bit ARM, hard float
+#   riscv64-linux-gnu    64-bit RISC-V
+#   arm64-apple-darwin   Apple silicon macOS
+#   x86_64-apple-darwin  Intel macOS
+# The OS field also decides the BINARY FORMAT — darwin means Mach-O, everything
+# else here means ELF — and several fields below default from that, so getting the
+# triple right settles them for you. See targets/SCHEMA.md.
+TARGET_TRIPLE=
+
+# Derived from the triple if left empty. Set it only if they differ.
+TARGET_ARCH=
+
+# LEAVE EMPTY unless you are certain. A specific CPU lets the compiler emit
+# instructions that older chips of the same family lack, and the binary then
+# SIGILLs on them — a crash that looks like memory corruption, not a wrong flag.
+# Empty = generic = runs on every chip of this architecture.
+TARGET_CPU=
+# 'mcpu' for ARM, 'march' for x86/RISC-V. Derived per-architecture if empty.
+TARGET_CPU_FLAG=
+
+# ── ABI contract with the running system ─────────────────────────────────────
+# These drive `make verify`, which refuses to ship a binary the target cannot
+# load. Leaving one empty disables that specific check — the build still works,
+# it is just no longer protecting you, and `make show-target` will say so.
+#
+# On the target:
+#   getconf GNU_LIBC_VERSION
+#   strings /usr/lib/*/libstdc++.so.6 | grep '^GLIBCXX_' | sort -V | tail -1
+#   readelf -l /bin/sh | grep interpreter
+#
+# Leave TARGET_LIBC empty and it follows the format: glibc for ELF, libSystem for
+# Mach-O. Name it only for a libc the triple does not imply, i.e. musl or other.
+# The version and ABI ceilings apply to glibc alone; the other libcs do not
+# version their symbols and `make verify` says so instead of pretending to check.
+TARGET_LIBC=
+TARGET_LIBC_VERSION=
+TARGET_CXXABI_MAX=
+
+# The absolute path of the ELF loader ON THE TARGET. Wrong value =>
+# "No such file or directory" for a binary that visibly exists. Empty lets the
+# compiler infer it from the sysroot, which is usually but not always right.
+# ELF only: leave it empty for a Darwin target, which records no interpreter.
+TARGET_DYNAMIC_LINKER=
+
+# ── sysroot ──────────────────────────────────────────────────────────────────
+# How to obtain the target's headers and libraries. See docs/04-sysroot-providers.md
+#   ssh-rsync    copy off the live machine     <- best when the machine exists
+#   tar          unpack an archive
+#   dir          use an existing tree (Yocto SDK, Buildroot staging)
+#   native       this machine's own headers and libraries, wherever it keeps them
+#                ("/" on Linux, the xcrun SDK on macOS)  <- for a native build
+#   oci          extract a container image
+#   debootstrap  construct a Debian-family root (needs root; an approximation)
+#   none         managed externally; also set SYSROOT_DIR
+SYSROOT_PROVIDER=ssh-rsync
+SYSROOT_PROVIDER_ARGS="host=user@hostname port=22"
+
+# ── toolchain ────────────────────────────────────────────────────────────────
+# Leave the linker and the C++ library empty and they follow the format: lld and
+# libstdc++ for an ELF target; for Mach-O, the compiler driver's own linker (ld64,
+# which ships with the Command Line Tools) and libc++, because macOS has no
+# libstdc++ to ask for. Fill one in only to override that.
+TOOLCHAIN_KIND=llvm
+TARGET_LINKER=
+TARGET_STDLIB=
+TARGET_CXX_STANDARD=20
+
+# ── runtime layout ───────────────────────────────────────────────────────────
+# Empty means "look next to me" in whichever spelling the target's format uses:
+# $$ORIGIN for ELF (doubled for Make; the compiler sees $ORIGIN), @loader_path
+# for Mach-O. Either way a deployed bundle is self-contained with no
+# LD_LIBRARY_PATH. Do not hardcode one: ld64 accepts $ORIGIN and records it
+# unexpanded, so the ELF token on a Darwin target links and then finds nothing.
+TARGET_RPATH=
+TARGET_DEPLOY_DIR=/tmp/CHANGEME

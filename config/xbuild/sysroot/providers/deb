@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+#
+# provider: deb — assemble a sysroot from named Debian/Ubuntu packages, on any host.
+#
+# WHY THIS EXISTS ALONGSIDE `debootstrap`
+# ---------------------------------------
+# `debootstrap` builds a whole bootable root filesystem and then you use a corner of it.
+# That costs four things a cross-build does not need: root, a network mirror it resolves
+# itself, `qemu-user-static` plus `binfmt_misc` for a foreign architecture, and a Linux
+# build host — the tool cannot run on macOS at all.
+#
+# A sysroot is a much smaller thing: headers, the linker names of a few libraries, and the
+# startup objects. Those live in a handful of .deb files, and a .deb is an `ar` archive
+# containing a tarball. Fetching and unpacking a known list of them needs `curl`, `ar` and
+# `tar` — present on every developer machine, including a Mac — and no privileges at all.
+#
+# The practical difference: the interactive installer this replaces required sudo, a TUI
+# toolkit ON THE BUILD HOST, and a glibc-to-codename guessing table you could click past.
+# This takes a list of package names and a suite, and every version it resolved is written
+# into the sysroot as a receipt, so the same command on another machine produces the same
+# tree or tells you why it cannot.
+#
+# WHAT IT DOES NOT DO
+# It resolves no dependencies. That is deliberate: a sysroot's package set is small, closed
+# and worth stating explicitly, and silent dependency expansion is how you end up linking
+# against something nobody chose. If a link fails for a missing library, add its package to
+# PACKAGES and you will know exactly what changed.
+#
+# ARGUMENTS
+#   suite=<name>       Ubuntu/Debian suite, e.g. noble, jammy, bookworm   (required)
+#   arch=<deb-arch>    arm64, amd64, armhf, riscv64 ...   (default: from the target triple)
+#   mirror=<url>       archive root. Defaults by architecture: Ubuntu serves arm64 from
+#                      ports.ubuntu.com and amd64 from archive.ubuntu.com, which is the
+#                      single most common way to get an empty package list.
+#   packages=<a,b,c>   comma-separated, replacing the default set below.
+#   add=<a,b,c>        comma-separated, appended to the default set.
+#
+# READ THIS BEFORE USING IT FOR A VENDOR BOARD
+# A distribution sysroot is an APPROXIMATION of an embedded target, and the approximation
+# is measurable. One real case, to show the shape: against an aarch64 device whose userspace
+# was built with GCC 13.2 (glibc 2.39, GLIBCXX_3.4.32, CXXABI_1.3.14), Ubuntu noble supplies
+# the right glibc and a libstdc++ one version too new on BOTH C++ axes — 3.4.33 and 1.3.15 —
+# because noble's libstdc++6 package is GCC 14's runtime. Installing the
+# gcc-13 headers does not change that: libstdc++.so is a symlink to the GCC 14 runtime.
+#
+# So a binary built here links cleanly and runs on that board only for as long as it happens
+# to reference no symbol newer than the board has. That is exactly what TARGET_CXXABI_MAX is
+# for: `make probe` reads both ceilings off the real machine, and `make verify` refuses an
+# artifact that exceeds either. Use this provider with those ceilings set, or use the
+# vendor's own SDK sysroot, which matches by construction.
+#
+# ROOT: not needed. Network: yes.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[deb] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[deb] %s\n' "$*"; }
+
+suite="" arch="" mirror="" packages="" add=""
+for kv in $ARGS; do
+  case $kv in
+    suite=*)    suite=${kv#suite=} ;;
+    arch=*)     arch=${kv#arch=} ;;
+    mirror=*)   mirror=${kv#mirror=} ;;
+    packages=*) packages=${kv#packages=} ;;
+    add=*)      add=${kv#add=} ;;
+    *) die "unrecognised argument '$kv'.
+       Supported: suite= arch= mirror= packages= add=" ;;
+  esac
+done
+
+[[ -n $suite ]] || die "suite= is required, e.g. SYSROOT_PROVIDER_ARGS=\"suite=noble\"
+       There is no default on purpose: the suite decides the libc and libstdc++ versions
+       you will link against, and guessing it is how a sysroot ends up describing a
+       machine other than the one you are building for."
+
+# The architecture, in Debian's spelling, from the target's own triple when not given.
+if [[ -z $arch ]]; then
+  _t=${TARGET_TRIPLE:-}
+  _here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../tools" && pwd)
+  arch=$("$_here/arch-table.sh" deb-arch "${_t%%-*}" 2>/dev/null || echo "")
+  [[ -n $arch ]] || die "could not derive a Debian architecture from TARGET_TRIPLE='$_t'.
+       Pass it: SYSROOT_PROVIDER_ARGS=\"suite=$suite arch=arm64\""
+  log "architecture $arch (from the target triple)"
+fi
+
+# Ubuntu splits its archive by architecture and serving the wrong half returns a valid,
+# EMPTY package index rather than an error — so the default is chosen here rather than left
+# to the user to discover.
+if [[ -z $mirror ]]; then
+  case $arch in
+    amd64|i386) mirror=http://archive.ubuntu.com/ubuntu ;;
+    *)          mirror=http://ports.ubuntu.com/ubuntu-ports ;;
+  esac
+fi
+
+# The closed set a C/C++ cross-build actually needs. Named, not derived, so that what you
+# link against is a decision somebody wrote down.
+DEFAULT_PACKAGES="libc6 libc6-dev linux-libc-dev libgcc-s1 libstdc++6 gcc-13-base libstdc++-13-dev libgcc-13-dev"
+[[ -n $packages ]] && DEFAULT_PACKAGES=${packages//,/ }
+[[ -n $add ]] && DEFAULT_PACKAGES="$DEFAULT_PACKAGES ${add//,/ }"
+
+for t in curl ar tar; do
+  command -v "$t" >/dev/null 2>&1 || die "missing '$t', which this provider needs."
+done
+
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/crossbuild-deb-XXXXXX") || die "cannot create a temp dir"
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+
+# ── the package index ────────────────────────────────────────────────────────
+# main and universe both, because the -dev packages people need are split across them
+# without any pattern worth memorising.
+log "fetching package indexes for $suite/$arch from $mirror"
+: > "$TMP/Packages"
+_got_index=0
+for comp in main universe; do
+  for ext in gz xz; do
+    url="$mirror/dists/$suite/$comp/binary-$arch/Packages.$ext"
+    if curl -fsS --max-time 120 -o "$TMP/idx.$ext" "$url" 2>/dev/null; then
+      case $ext in
+        gz) gunzip -c "$TMP/idx.$ext" >> "$TMP/Packages" 2>/dev/null && _got_index=1 ;;
+        xz) command -v xz >/dev/null 2>&1 && xz -dc "$TMP/idx.$ext" >> "$TMP/Packages" 2>/dev/null && _got_index=1 ;;
+      esac
+      rm -f "$TMP/idx.$ext"
+      [[ $_got_index -eq 1 ]] && break
+    fi
+  done
+done
+[[ $_got_index -eq 1 ]] || die "could not fetch a package index from
+         $mirror/dists/$suite/<component>/binary-$arch/Packages.{gz,xz}
+       Check the suite name and the architecture. Ubuntu serves amd64/i386 from
+       archive.ubuntu.com and every other architecture from ports.ubuntu.com; asking the
+       wrong one yields an index with none of your packages in it rather than an error."
+
+field_of() {   # field_of <package> <field>
+  awk -v pkg="$1" -v f="$2" '
+    /^Package: /{cur=$2}
+    $0 ~ "^"f": " {if(cur==pkg){sub("^"f": ",""); print; exit}}' "$TMP/Packages"
+}
+
+mkdir -p "$DEST" || die "cannot create $DEST"
+
+# ── fetch and unpack ─────────────────────────────────────────────────────────
+receipt="$DEST/.crossbuild-deb-packages"
+: > "$receipt"
+n=0
+for p in $DEFAULT_PACKAGES; do
+  fn=$(field_of "$p" Filename)
+  ver=$(field_of "$p" Version)
+  [[ -n $fn ]] || die "package '$p' is not in $suite/$arch.
+       If it is named differently in this suite, pass the right list:
+         SYSROOT_PROVIDER_ARGS=\"suite=$suite packages=<a,b,c>\""
+  deb="$TMP/$(basename "$fn")"
+  curl -fsS --max-time 300 -o "$deb" "$mirror/$fn" \
+    || die "failed to download $mirror/$fn"
+
+  ( cd "$TMP" && ar x "$deb" ) || die "'$deb' is not a valid .deb (ar could not read it)"
+  _unpacked=0
+  for t in data.tar.zst data.tar.xz data.tar.gz data.tar.bz2; do
+    [[ -f "$TMP/$t" ]] || continue
+    case $t in
+      *.zst) command -v zstd >/dev/null 2>&1 \
+               || die "$p is compressed with zstd and 'zstd' is not installed.
+       Install it (brew install zstd | apt install zstd), or choose an older suite." ;;
+    esac
+    # KEEP tar's stderr. It was discarded, so the only diagnostic a failure produced was the
+    # generic sentence below, naming a package and nothing else — while the real cause (a
+    # truncated download, a full disk, a permission problem) was sitting in the message that
+    # had just been thrown away. Re-running usually succeeded, which made it look like a flaky
+    # tool rather than a fetch worth retrying, and nothing told the reader to retry.
+    _tarerr=$(tar -xf "$TMP/$t" -C "$DEST" 2>&1) && _unpacked=1
+    rm -f "$TMP/$t"
+    break
+  done
+  rm -f "$TMP"/control.tar.* "$TMP/debian-binary" "$deb"
+  [[ $_unpacked -eq 1 ]] || die "could not unpack the data archive from $p
+       tar said:
+$(printf '%s' "${_tarerr:-(tar produced no output)}" | sed 's/^/         /')
+
+       A truncated or corrupt download is the common cause and it is transient — the
+       archive is re-fetched from scratch, so simply running the same command again
+       usually works:
+           make sysroot TARGET=$(basename "${CONF%.conf}")"
+
+  printf '%s %s\n' "$p" "$ver" >> "$receipt"
+  printf '  %-22s %s\n' "$p" "$ver"
+  n=$((n + 1))
+done
+
+# ── make the tree usable as a sysroot ────────────────────────────────────────
+# Debian ships /lib and /lib64 as symlinks to usr/, and a .deb unpacked outside dpkg does
+# not create them. Without /lib the loader path recorded in a description
+# (/lib/ld-linux-aarch64.so.1) names nothing in this tree, and sysroot-inspect reports no
+# interpreter for a sysroot that has one.
+for d in lib lib64 bin sbin; do
+  if [[ -d "$DEST/usr/$d" && ! -e "$DEST/$d" ]]; then
+    ln -s "usr/$d" "$DEST/$d" 2>/dev/null || true
+  fi
+done
+
+log ""
+log "unpacked $n package(s) into $DEST"
+log "versions recorded in $(basename "$receipt") — a record of exactly what was resolved,"
+log "not a lock: nothing re-reads it and there is no version pin, so a re-fetch resolves"
+log "against whatever the archive serves that day. It is how you find out what changed."

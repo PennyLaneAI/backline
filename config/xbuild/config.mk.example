@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# config.mk.example — copy to config.mk to set local paths once.
+#
+#     cp config.mk.example config.mk
+#
+# config.mk is git-ignored: it holds paths specific to YOUR machine, which should
+# never be committed. Everything here can equally be passed on the command line;
+# this file just saves retyping.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── source roots ─────────────────────────────────────────────────────────────
+# External checkouts that components declare in COMPONENT_SOURCE_ROOTS. A
+# component naming a root that is unset fails immediately, by name, before
+# anything compiles.
+#
+# See which roots are needed:  make list-components
+
+# CATALYST   = $(HOME)/src/catalyst
+# LIGHTNING  = $(HOME)/src/pennylane-lightning
+
+# Only needed by the FPGA components (example-fpga-session,
+# example-transport-backend). They are COMPONENT_OPTIONAL=yes, so leave this unset if
+# you do not have that tree — those two are reported as skipped and nothing else is
+# affected. It must be the directory holding the device sources and a vendor/ subdir:
+#     ls $FPGA_HWHS/HwhsControllerSession.cpp $FPGA_HWHS/vendor
+# FPGA_HWHS  = $(HOME)/src/myrepo/my_device
+
+# ── build tuning ─────────────────────────────────────────────────────────────
+# Parallel compile jobs. Defaults to nproc.
+# JOBS = 16
+
+# Parallel LINK jobs. Deliberately defaults to 1: linking a large C++ project can
+# take several GB per link, and N parallel links is the classic way to OOM a build
+# machine. Raise it only if you know you have the memory.
+# LINK_JOBS = 2
+
+# BUILD_TYPE = Release        # or Debug, RelWithDebInfo
+
+# ── toolchain override ───────────────────────────────────────────────────────
+# Normally autodetected from PATH by asking clang where it lives. Set this only if
+# you have several toolchains and want a specific one.
+# TOOLCHAIN_ROOT = /opt/llvm-19

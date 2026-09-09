@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#
+# provider: oci — build a sysroot from a container image's filesystem.
+#
+# WHEN TO USE
+# When the target environment is *defined* by an image. This is now the common case
+# for anything deployed to Kubernetes or run in a container on an edge device: the
+# image IS the specification of the runtime environment, so extracting its
+# filesystem gives you a sysroot that is exactly right by definition.
+#
+# It is also the most reproducible option available. Pin an image by digest
+# (`image@sha256:…`) and every build on every machine for the next five years gets
+# byte-identical headers and libraries. No other provider can promise that: an ssh
+# copy reflects whatever the device has today, and a distro archive moves under
+# you as packages are updated.
+#
+# ARGS
+#   image=<ref>       required, e.g. debian:12, arm64v8/alpine:3.20,
+#                     ghcr.io/org/img@sha256:…
+#   platform=<p>      optional, e.g. linux/arm64. Needed when the reference is
+#                     multi-arch and you want an architecture other than the host's.
+#   tool=<name>       optional; force skopeo|docker|podman instead of autodetect.
+#
+# EXAMPLE
+#   SYSROOT_PROVIDER=oci
+#   SYSROOT_PROVIDER_ARGS="image=arm64v8/debian:12 platform=linux/arm64"
+#
+# ROOT: not needed with skopeo. The docker path needs access to a daemon socket,
+# which is often equivalent to root — so skopeo is preferred and tried first.
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[oci] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[oci] %s\n' "$*"; }
+
+image="" platform="" tool=""
+for kv in $ARGS; do
+  case $kv in
+    image=*)    image=${kv#image=} ;;
+    platform=*) platform=${kv#platform=} ;;
+    tool=*)     tool=${kv#tool=} ;;
+    *) die "unrecognised argument '$kv'. Supported: image= platform= tool=" ;;
+  esac
+done
+
+[[ -n $image ]] || die "image= is required.
+       e.g. SYSROOT_PROVIDER_ARGS=\"image=arm64v8/debian:12 platform=linux/arm64\""
+
+# ── pick a tool ──────────────────────────────────────────────────────────────
+# skopeo first: it is daemonless and rootless, so it works on a CI runner and in
+# an unprivileged container. podman before docker for the same reason.
+if [[ -z $tool ]]; then
+  for t in skopeo podman docker; do
+    command -v "$t" >/dev/null 2>&1 && { tool=$t; break; }
+  done
+fi
+[[ -n $tool ]] || die "none of skopeo, podman or docker is installed.
+       Install skopeo (preferred: daemonless and rootless), or use a different
+       provider — see sysroot/README.md."
+command -v "$tool" >/dev/null || die "requested tool='$tool' is not installed."
+
+mkdir -p "$DEST" || die "cannot create '$DEST'"
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/crossbuild-oci-XXXXXX")
+cleanup() { rm -rf "$TMP"; }
+trap cleanup EXIT
+
+log "using $tool to fetch $image ${platform:+($platform)}"
+
+case $tool in
+skopeo)
+  # Copy to a local OCI layout, then unpack the layers by hand. We deliberately do
+  # not require umoci: layers are just tarballs, and applying them in order with
+  # tar is a handful of lines and one fewer dependency.
+  sk_args=(copy)
+  [[ -n $platform ]] && sk_args+=(--override-os "${platform%%/*}" --override-arch "${platform##*/}")
+  skopeo "${sk_args[@]}" "docker://$image" "oci:$TMP/layout:img" \
+    || die "skopeo copy failed for '$image'. Check the reference and your network.
+       For a private registry you may need: skopeo login <registry>"
+
+  # The manifest lists layers in application order. Parse it without jq — jq is not
+  # universally installed, and a dependency on it for three fields is not worth it.
+  index="$TMP/layout/index.json"
+  [[ -r $index ]] || die "skopeo produced no index.json; the copy did not complete."
+  manifest_digest=$(tr ',' '\n' < "$index" | sed -n 's/.*"digest":"sha256:\([a-f0-9]*\)".*/\1/p' | head -n1)
+  [[ -n $manifest_digest ]] || die "could not read a manifest digest out of $index"
+  manifest="$TMP/layout/blobs/sha256/$manifest_digest"
+  [[ -r $manifest ]] || die "manifest blob missing: $manifest"
+
+  # Layer digests, in order of appearance, skipping the config blob (which the
+  # manifest names under "config", before "layers").
+  layers=$(sed -n 's/.*"layers":\[\(.*\)\].*/\1/p' "$manifest" \
+           | tr ',' '\n' | sed -n 's/.*"digest":"sha256:\([a-f0-9]*\)".*/\1/p')
+  [[ -n $layers ]] || die "no layers found in the manifest; is '$image' an image reference?"
+
+  n=0
+  while read -r l; do
+    [[ -n $l ]] || continue
+    n=$((n+1))
+    log "applying layer $n (${l:0:12})"
+    # Layers must be applied in order, and later layers legitimately overwrite
+    # earlier ones — that is how images work. tar's default overwrite behaviour is
+    # exactly right here.
+    tar -xpf "$TMP/layout/blobs/sha256/$l" -C "$DEST" 2>/dev/null \
+      || log "  (warnings ignored: layers often contain device nodes and whiteouts)"
+  done <<< "$layers"
+  ;;
+
+podman|docker)
+  # `create` + `export` flattens the image for us, which sidesteps layer and
+  # whiteout handling entirely. It needs a daemon (docker) or at least a local
+  # store (podman), which is why it is the fallback.
+  cr_args=(create)
+  [[ -n $platform ]] && cr_args+=(--platform "$platform")
+  cid=$("$tool" "${cr_args[@]}" "$image" /bin/true 2>/dev/null) \
+    || die "$tool create failed for '$image'.
+       If the image has no /bin/true try a different reference, or use skopeo."
+  # shellcheck disable=SC2064
+  trap "$tool rm -f '$cid' >/dev/null 2>&1 || true; rm -rf '$TMP'" EXIT
+  log "exporting container filesystem"
+  "$tool" export "$cid" | tar -xpf - -C "$DEST" 2>/dev/null \
+    || die "$tool export failed."
+  ;;
+esac
+
+# A container image is a full rootfs, so verify it looks like one. An image built
+# FROM scratch holding one static binary is a valid image and a useless sysroot;
+# saying so now is much kinder than a missing-stdio.h error later.
+if [[ ! -d $DEST/usr && ! -d $DEST/lib ]]; then
+  die "the image filesystem has no usr/ or lib/, so it cannot serve as a sysroot.
+       Contents: $(ls -1 "$DEST" 2>/dev/null | head -5 | tr '\n' ' ')
+       A scratch/distroless image contains no headers or libraries to compile
+       against — use the image's build stage instead (e.g. debian:12, not
+       gcr.io/distroless/base)."
+fi
+
+# Headers are a separate concern from libraries: a runtime image usually has the
+# .so files but not the -dev headers, and the resulting compile failure names a
+# header, not the image. Flag it here where the cause is visible.
+if [[ ! -d $DEST/usr/include ]]; then
+  log "WARNING: no usr/include in this image, so there are no headers to compile"
+  log "         against. Use the -dev / -devel / build variant of the image"
+  log "         (e.g. debian:12 rather than a slim runtime image)."
+fi
+
+log "done -> $DEST"

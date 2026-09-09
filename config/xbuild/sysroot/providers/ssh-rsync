@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+#
+# provider: ssh-rsync — copy the sysroot off a live target over ssh.
+#
+# THIS IS THE PROVIDER YOU SHOULD USUALLY WANT.
+#
+# Every other approach *reconstructs* an approximation of the target from some
+# archive and then hopes the reconstruction matches. This one copies the real
+# thing. There is no distro to identify, no release codename to look up, no
+# glibc-version table to keep current, and no "warning: release noble doesn't
+# match the target's glibc" prompt to click through. The libraries you link
+# against are, by construction, the libraries that will be present at runtime.
+#
+# ARGS   (SYSROOT_PROVIDER_ARGS, space-separated key=value)
+#   host=user@hostname     required
+#   port=22                optional
+#   paths=/lib,/usr/lib    optional; override what gets copied (comma-separated)
+#   exclude="…"            optional; extra rsync --exclude patterns, comma-separated
+#   sudo=yes               optional; read as root on the target (for 0600 files)
+#
+# EXAMPLE
+#   SYSROOT_PROVIDER=ssh-rsync
+#   SYSROOT_PROVIDER_ARGS="host=user@my-board.local port=22"
+#
+# REQUIRES on the build host: ssh, rsync.
+# REQUIRES on the target:     rsync, and a login you can reach.
+# ROOT:                       not needed on either side (unless sudo=yes).
+
+set -uo pipefail
+
+DEST=${1:?provider needs a destination directory}
+ARGS=${2:-}
+CONF=${3:-}
+
+die() { printf '\n[ssh-rsync] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[ssh-rsync] %s\n' "$*"; }
+
+# ── parse the args string ────────────────────────────────────────────────────
+host="" port=22 sudo_flag="" paths="" exclude=""
+for kv in $ARGS; do
+  case $kv in
+    host=*)    host=${kv#host=} ;;
+    port=*)    port=${kv#port=} ;;
+    sudo=*)    sudo_flag=${kv#sudo=} ;;
+    paths=*)   paths=${kv#paths=}; paths=${paths//,/ } ;;
+    exclude=*) exclude=${kv#exclude=} ;;
+    *) die "unrecognised argument '$kv'.
+       Supported: host= port= paths= exclude= sudo=
+       Got SYSROOT_PROVIDER_ARGS=\"$ARGS\"" ;;
+  esac
+done
+
+[[ -n $host ]] || die "host= is required.
+       Set it in the target description, e.g.
+         SYSROOT_PROVIDER_ARGS=\"host=user@my-board.local port=22\""
+
+command -v ssh   >/dev/null || die "ssh not found on this build host."
+command -v rsync >/dev/null || die "rsync not found on this build host (apt/dnf/brew install rsync)."
+
+# ── what to copy ─────────────────────────────────────────────────────────────
+#
+# Chosen to be the smallest set that can satisfy a compile and link:
+#   /lib /lib64 /usr/lib /usr/lib64   shared objects + the ELF interpreter
+#   /usr/include                       headers
+#
+# Deliberately NOT the whole rootfs. Copying / would drag in /proc, /sys, /dev,
+# every log, every user's data, and possibly credentials — slow, large, and a
+# needless exposure of target data onto the build host. If a build genuinely needs
+# more (a vendor SDK under /opt, say), the target description can extend this via
+# paths=.
+if [[ -z $paths ]]; then
+  paths="/lib /lib64 /usr/lib /usr/lib64 /usr/include /usr/local/lib /usr/local/include"
+fi
+
+# Excluded even from the directories we do copy: kernel modules and firmware are the
+# big win (hundreds of MB of .ko files no userspace link ever touches), plus docs and
+# locale data.
+#
+# ── EVERY PATTERN HERE MUST BE ANCHORED. READ THIS BEFORE ADDING ONE. ──────────
+#
+# An rsync pattern containing no '/' (or only a trailing one) matches a basename at
+# ANY DEPTH. So the obvious-looking `--exclude 'debug/'` does not mean "the
+# /usr/lib/debug split-symbol tree"; it means "every directory called debug,
+# anywhere" — which silently deletes:
+#
+#     /usr/include/c++/<ver>/debug/
+#
+# That directory is not optional. libstdc++'s <string> pulls in
+# bits/stl_iterator_base_funcs.h, which does `#include <debug/assertions.h>`. Remove
+# it and EVERY C++ compile against the sysroot dies with:
+#
+#     fatal error: 'debug/assertions.h' file not found
+#
+# and the error points inside libstdc++, so it reads as a broken sysroot or a broken
+# toolchain rather than as a copy that omitted 32 headers. (This was a real bug in
+# this provider, reported from the field. The unanchored 'doc/', 'man/' and 'locale/'
+# patterns were the same latent hazard: any of them can name a directory inside a
+# header tree.)
+#
+# Leading-slash patterns are anchored to the transfer root, i.e. the path being
+# copied. Since each path is copied in its own rsync invocation (see the loop below),
+# '/modules' anchors to the root of whichever path is currently being transferred —
+# which is what makes these correct for /lib/modules and harmless everywhere else.
+EXCLUDES=(
+  # Kernel trees: huge, and never needed to compile userspace.
+  --exclude '/modules/***'
+  --exclude '/firmware/***'
+  # Split debug symbols. Anchored: matches /usr/lib/debug, NOT the C++ debug headers.
+  --exclude '/debug/***'
+  --exclude '*.debug'
+  # Documentation and locale data. Anchored to the transfer root, so a 'doc' or
+  # 'locale' directory inside a header tree is preserved.
+  --exclude '/locale/***'
+  --exclude '/man/***'
+  --exclude '/doc/***'
+  # Safe unanchored: a __pycache__ never contains anything a compile needs, and no
+  # header tree legitimately has one.
+  --exclude '__pycache__/'
+)
+
+if [[ -n $exclude ]]; then
+  IFS=',' read -r -a extra <<< "$exclude"
+  for e in "${extra[@]}"; do
+    # Warn on an unanchored user pattern rather than silently obeying it: this is the
+    # exact shape of the bug described above, and the consequence is invisible until a
+    # compile fails inside a system header.
+    case $e in
+      */*) : ;;                       # contains a slash: anchored or explicitly deep
+      *)   log "WARNING: exclude pattern '$e' has no '/', so rsync matches it at ANY"
+           log "         depth — including inside header trees. If you meant a specific"
+           log "         directory, anchor it, e.g. '/$e'." ;;
+    esac
+    EXCLUDES+=(--exclude "$e")
+  done
+fi
+
+mkdir -p "$DEST" || die "cannot create '$DEST'"
+
+# Reuse one authenticated connection for every rsync invocation below. Without
+# this, a password-authenticated target prompts once per path — seven prompts,
+# which people reasonably interpret as a broken script.
+CTL=$(mktemp -u "${TMPDIR:-/tmp}/crossbuild-ssh-XXXXXX")
+SSH_OPTS=(-o ControlMaster=auto -o ControlPath="$CTL" -o ControlPersist=300
+          -o StrictHostKeyChecking=accept-new -p "$port")
+cleanup() { ssh -O exit -o ControlPath="$CTL" "$host" 2>/dev/null || true; rm -f "$CTL"; }
+trap cleanup EXIT
+
+log "connecting to $host (port $port)"
+ssh "${SSH_OPTS[@]}" "$host" true \
+  || die "cannot ssh to '$host' on port $port.
+       Check the hostname, that the target is powered and on the network, and that
+       your key or password works:  ssh -p $port $host"
+
+# Verify rsync exists on the far side before starting, because rsync's own error
+# for a missing remote binary is famously opaque ("protocol version mismatch" or
+# "unexpected remote arg").
+ssh "${SSH_OPTS[@]}" "$host" 'command -v rsync >/dev/null' \
+  || die "the target has no 'rsync' binary, which this provider needs.
+       Either install rsync on the target, or use the 'tar' provider instead —
+       it needs only tar, which every Linux has. See sysroot/README.md."
+
+# --info=progress2 redraws one line with carriage returns, which is what you want on a terminal
+# and unreadable in a log file: a redirected fetch ends up with dozens of identical "99%" lines.
+# Fall back to a one-line summary per path when stdout is not a terminal.
+if [[ -t 1 ]]; then
+  PROGRESS_FLAG=--info=progress2
+else
+  PROGRESS_FLAG=--info=stats1
+fi
+
+rsh="ssh ${SSH_OPTS[*]}"
+
+# Merge of two changes to the same spot: upstream's tty→progress2 / log→stats1 choice
+# (PROGRESS_FLAG above) AND the openrsync probe. macOS 15 replaced Samba rsync with openrsync
+# (protocol 29), which rejects `--info=` outright, and a sysroot fetch must not fail over a
+# progress display. So take the flag upstream chose, then probe THAT this rsync accepts it;
+# empty means "omit it". Probed once here, not once per path.
+rsync_progress=""
+rsync "$PROGRESS_FLAG" --version >/dev/null 2>&1 && rsync_progress="$PROGRESS_FLAG"
+
+rsync_bin_opt=()
+if [[ $sudo_flag == yes ]]; then
+  # --rsync-path runs the remote rsync under sudo so root-only-readable files can
+  # be read. Needs passwordless sudo on the target or it will hang on a prompt.
+  rsync_bin_opt=(--rsync-path="sudo rsync")
+  log "reading target files via sudo (requires passwordless sudo on the target)"
+fi
+
+# ── copy each path ───────────────────────────────────────────────────────────
+#
+# -a preserves symlinks as symlinks. That is essential and NOT merely an
+# optimisation: a sysroot's libc.so is typically a symlink chain
+# (libc.so -> libc.so.6 -> libc-2.39.so), and dereferencing it into three
+# identical 2 MB regular files breaks the linker's ability to resolve the SONAME.
+# We fix the *absolute* symlinks afterwards in normalise/, not here.
+copied_any=0
+for p in $paths; do
+  if ! ssh "${SSH_OPTS[@]}" "$host" "test -e '$p'"; then
+    log "skip $p (not present on target)"
+    continue
+  fi
+
+  # ── merged-/usr: reproduce the symlink instead of following it ─────────────
+  #
+  # On every merged-/usr distro (Ubuntu >= 21, Debian >= 12, Fedora since 2012) /lib is a
+  # symlink to usr/lib, and /lib64 usually likewise. Both the link and its destination are in
+  # the default path list, and rsync with a trailing slash on the source FOLLOWS the link —
+  # so the same tree was transferred and stored twice. Measured on a stock Ubuntu 24.04
+  # target: 235M of 497M, 2730 files, byte-identical. On a developer machine used as a
+  # target it was 3.4G duplicated.
+  #
+  # Recreating the symlink is also more faithful than copying: a sysroot whose /lib is a real
+  # directory does not have the shape the target has, and a library found under one spelling
+  # but not the other is a difference waiting to matter.
+  link_target=$(ssh "${SSH_OPTS[@]}" "$host" "test -L '$p' && readlink '$p'" 2>/dev/null)
+  if [[ -n $link_target ]]; then
+    log "link  $p -> $link_target (symlink on the target; not copying its contents)"
+    mkdir -p "$(dirname "$DEST$p")"
+    # A previous fetch, made before this provider knew about merged-/usr, will have left a
+    # real directory here holding the duplicate. Replace it. Guarded on both variables being
+    # non-empty and $p not being '/', because this is an 'rm -rf' built from two strings.
+    if [[ -n $DEST && -n $p && $p != / && -d $DEST$p && ! -L $DEST$p ]]; then
+      log "replacing the duplicated copy left by an earlier fetch at $DEST$p"
+      rm -rf "${DEST:?}${p:?}" || die "could not remove the stale directory '$DEST$p'."
+    fi
+    # -n so a re-fetch replaces the link rather than creating one INSIDE the directory it
+    # already points at, which is how you end up with usr/lib/lib -> usr/lib.
+    ln -sfn "$link_target" "$DEST$p" \
+      || die "could not create the symlink '$DEST$p' -> '$link_target'."
+    copied_any=1
+    continue
+  fi
+
+  log "copying $p"
+  # Trailing-slash discipline: "$p/" as source with "$DEST$p/" as destination
+  # reproduces the target's absolute layout under DEST, which is what --sysroot
+  # expects. Getting this wrong nests the tree one level deeper and every
+  # subsequent error is a missing header.
+  mkdir -p "$DEST$p"
+  # $rsync_progress is the probed flag (progress2 or stats1 by tty, empty if this rsync —
+  # e.g. macOS openrsync — rejects --info=). Unquoted on purpose so an empty value drops out
+  # of the argv rather than passing "" as a path. Probed once, above the loop.
+  rsync -a $rsync_progress --no-motd \
+        "${rsync_bin_opt[@]+"${rsync_bin_opt[@]}"}" \
+        "${EXCLUDES[@]+"${EXCLUDES[@]}"}" \
+        -e "$rsh" \
+        "$host:$p/" "$DEST$p/"
+  rc=$?
+
+  # Copying a LIVE root filesystem as an unprivileged user always meets a few files it cannot
+  # read (0700 daemon helpers such as /usr/lib/cups/backend/*) or that disappear mid-copy. rsync
+  # reports those as 23 and 24, and it does so AFTER transferring everything else — the tree is
+  # complete apart from the named files.
+  #
+  # Treating them as fatal was wrong twice over: the fetch was abandoned with ~6GB already
+  # copied, and because get-sysroot.sh writes its completion marker only on success, what
+  # remained looked like a mysteriously half-populated sysroot whose real cause (two unreadable
+  # CUPS backends) had scrolled past. Whether the result is USABLE is not this script's call —
+  # the probe, the C++ header check, the integrity check and the linkability report all run
+  # afterwards, and they answer that question by looking at the tree.
+  case $rc in
+    0) ;;
+    23) log "note: some files could not be read and were skipped (rsync exit 23). Their names are
+      above. This is normal for a live rootfs copied as a non-root user; add sudo=yes to
+      SYSROOT_PROVIDER_ARGS if any of them turn out to matter." ;;
+    24) log "note: some files vanished during the copy (rsync exit 24). Normal on a running
+      system; the rest of the tree transferred." ;;
+    *) die "rsync of '$p' failed with exit $rc. See the error above.
+       If it mentions permissions, try adding sudo=yes to SYSROOT_PROVIDER_ARGS." ;;
+  esac
+  copied_any=1
+done
+
+[[ $copied_any -eq 1 ]] || die "none of the requested paths existed on the target:
+       $paths
+       Is this actually a Linux system? Override with paths= if its layout is unusual."
+
+log "done -> $DEST"
