@@ -26,7 +26,7 @@ increasingly optimized and low-level code.
 
 ## Key Features
 
-* **Single-digit microsecond latency**: Achieve under **3-μs** end-to-end loops. Backline
+* **Single-digit microsecond latency**: Achieve under 3-μs end-to-end loops. Backline
   treats CPUs and GPUs as highly responsive endpoints to support the tight co-processing needed
   for QEC backup decoding.
 
@@ -91,7 +91,7 @@ with low-latency execution.
 ## Installation
 
 Backline requires a recent version of PennyLane, Catalyst, and Lightning. We
-recommend installing version [`v0.46.0-rc1`](tk), or compiled from source from the latest development branch.
+recommend installing version `v0.46.0b1` for [PennyLane](https://github.com/PennyLaneAI/pennylane/tree/v0.46.0b1) and [Lightning](https://github.com/PennyLaneAI/pennylane-lightning/tree/v0.46.0b1), `v0.16.0b1` for [Catalyst](https://github.com/PennyLaneAI/catalyst/tree/v0.16.0b1) (either from source or using pre-built wheels for local demos).
 
 To install Backline, please see [`INSTALL.md`](INSTALL.md) for instructions and requirements. Note
 that due to the wide range of system, network, and hardware configurations you can use Backline
@@ -120,9 +120,9 @@ Backline is the work of [many contributors](https://github.com/PennyLaneAI/backl
 If you are doing research using Backline and PennyLane, please cite our papers:
 
 ```
-@article{lee2026backline,
+@article{tk,
   title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
-  author={Lee, Joseph K. L. and Malekmohammadi, Mehrdad and Zheng, Hong-Sheng and Shu, Shuli and Doumbia, Cheick and Szenes, Kalman and Zamani Abnili, Mehran and Ainsworth, Thomas and Seymour, Matthew and Germain, Thomas and Neuhaus, Leonhard and Izaac, Josh and O'Riordan, Lee J.},
+  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
   journal={arXiv preprint arXiv:tk},
   year={2026}
 }
