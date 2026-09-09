@@ -15,7 +15,7 @@ increasingly optimized and low-level code.
 > [!NOTE]
 > The core Backline implementation and source code lives natively within the PennyLane and Catalyst
 > repositories. This repository holds the demonstrations, benchmarks, and the cross-build system
-> accompanying the manuscript [*Paper name*](tk).
+> accompanying the manuscript [Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs](tk).
 
 > [!NOTE]
 > Backline is currently under heavy development — if you have suggestions on the API or use-cases
@@ -122,17 +122,10 @@ If you are doing research using Backline and PennyLane, please cite our papers:
 
 ```
 @article{tk
-  title={},
-  author={},
+  title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
+  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
   journal={arXiv preprint arXiv:tk},
   year={2026}
-}
-
-@article{bergholm2018pennylane,
-  title={Pennylane: Automatic differentiation of hybrid quantum-classical computations},
-  author={Bergholm, Ville and Izaac, Josh and Schuld, Maria and Gogolin, Christian and Ahmed, Shahnawaz and Ajith, Vishnu and Alam, M Sohaib and Alonso-Linaje, Guillermo and Asadi, Ali and others},
-  journal={arXiv preprint arXiv:1811.04968},
-  year={2018}
 }
 ```
 
