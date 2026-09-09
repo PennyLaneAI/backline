@@ -60,7 +60,8 @@ printf 'Package: *\nPin: origin repo.radeon.com\nPin-Priority: 900\n' \
 sudo apt update && sudo apt install -y hip-dev rocm-device-libs
 export PATH=/opt/rocm/bin:$PATH
 
-# 3. Catalyst
+# 3. Catalyst and PennyLane
+#    This builds from source. To run demo 1 with pre-built wheels, see following section.
 git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 cd "$CATALYST_ROOT"
@@ -120,10 +121,13 @@ Demo 1 can be executed using either [pre-built wheels](#from-wheel) for PennyLan
 #### From wheel
 
 ```bash
-pip install pennylane-catalyst==0.16.0b1 -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
+pip install pennylane-catalyst==0.16.0b1 \
+  -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 \
+  -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
+  -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 \
 ```
 
-#### From source 
+#### From source
 ```bash
 export CATALYST_ROOT=~/catalyst          # your own path
 
@@ -159,8 +163,7 @@ here because adding either later requires rebuilding LLVM.
 
 ### PennyLane and Triton
 
-`make frontend` above installs the PennyLane that Catalyst pins in its `.dep-versions`, which is
-the development build carrying backline's frontend. Nothing more is needed for it.
+`make all` above installs the PennyLane version that Catalyst pins in its `.dep-versions`. It does not need to be installed separately.
 
 Triton generates the decoders for demos 2, 2a and 5. With the virtual environment still active:
 
