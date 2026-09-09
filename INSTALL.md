@@ -32,6 +32,8 @@ requires the GPU. For the remote demos (demo 2 onwards) these are different mach
 ## Quickstart
 
 Follow these instructions to get started. `SERVER` and `BOARD` are the server and the VPK120 board.
+The steps below build Catalyst from source. To run demo 1 only, you can instead install pre-built
+wheels for PennyLane, Lightning, and Catalyst — see [From wheel](#from-wheel) below.
 
 ```bash
 # your own addresses; these are the reference hardware's
@@ -59,7 +61,7 @@ sudo apt update && sudo apt install -y hip-dev rocm-device-libs
 export PATH=/opt/rocm/bin:$PATH
 
 # 3. Catalyst
-git clone --recurse-submodules --shallow-submodules \
+git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 cd "$CATALYST_ROOT"
 python3 -m venv .venv && source .venv/bin/activate
@@ -71,7 +73,7 @@ make all
 pip install triton
 
 # 5. backline
-git clone https://github.com/PennyLaneAI/backline.git ~/backline
+git clone --branch v0.1.0b1 https://github.com/PennyLaneAI/backline.git ~/backline
 
 # 6. bundles for the remote machines, for tier 3 on
 cd ~/backline/config/xbuild
@@ -112,11 +114,21 @@ sudo apt install clang lld g++ ccache make git python3-venv python3-dev
 `cmake` and `ninja` arrive through Catalyst's requirements file.
 
 ### Catalyst
+Demo 1 runs on pre-built wheels for PennyLane, Lightning, and Catalyst, so it can be installed
+either [from wheel](#from-wheel) or [from source](#from-source). Every other demo (1a, 2, 2a, 3,
+4, and 5) needs the build flags set below, so those require [from source](#from-source).
 
+#### From wheel
+
+```bash
+pip install pennylane-catalyst==0.16.0b1 -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
+```
+
+#### From source 
 ```bash
 export CATALYST_ROOT=~/catalyst          # your own path
 
-git clone --recurse-submodules --shallow-submodules \
+git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 ```
 
@@ -353,7 +365,7 @@ controller moves to the board, so the round trip crosses the fabric between the 
 
 These run the controller on a VPK120 board, which posts the syndrome and detects the reply in
 hardware. This assumes your VPK120 board is installed with the correct image and in a correct state.
-See https://github.com/PennylaneAI/backline-vpk120/tree/main for more information on setting the FPGA up.
+See https://github.com/PennylaneAI/backline-vpk120/tree/v0.1.0b1 for more information on setting the FPGA up.
 
 The board's sysroot comes from distribution packages:
 
