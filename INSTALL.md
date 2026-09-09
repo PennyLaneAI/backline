@@ -123,8 +123,8 @@ Demo 1 can be executed using either [pre-built wheels](#from-wheel) for PennyLan
 ```bash
 pip install pennylane-catalyst==0.16.0b1 \
   -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 \
-  -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
   -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 \
+  -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
 ```
 
 #### From source
