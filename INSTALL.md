@@ -163,7 +163,7 @@ here because adding either later requires rebuilding LLVM.
 
 ### PennyLane and Triton
 
-`make all` above installs the PennyLane version that Catalyst pins in its `.dep-versions`. It does not need to be installed separately.
+`make all` above installs the PennyLane version that Catalyst pins in its `.dep-versions`. PennyLane does not need to be installed separately.
 
 Triton generates the decoders for demos 2, 2a and 5. With the virtual environment still active:
 
