@@ -1,6 +1,4 @@
 cff-version: "1.2.0"
-abstract: An open platform for compilation and low-latency execution that
-  dynamically connects quantum workloads to the right classical engine.
 authors:
 - family-names: Lee
   given-names: Joseph K. L.
