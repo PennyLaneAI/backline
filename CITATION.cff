@@ -82,7 +82,7 @@ preferred-citation:
   - family-names: "O'Riordan"
     given-names: Lee J.
     orcid: "https://orcid.org/0000-0002-6758-9433"
-  date-published: 2026-09-08
+  date-published: "2026-09-08"
   doi: 10.48550/arXiv.2609.09270
   journal: arXiv
   title: "Python in the front, party in the Backline: compiling quantum
