@@ -1,6 +1,6 @@
 # Backline
 
-[Backline](https://docs.pennylane.ai/en/latest/code/qp_backline.html) is an open platform for compilation and low-latency execution by AMD and Xanadu that
+[Backline](https://docs.pennylane.ai/en/latest/code/qp_backline.html) is an open platform for compilation and low-latency execution by Xanadu and AMD that
 dynamically connects quantum workloads to the right classical engine.
 
 With PennyLane and Backline, anyone can write a QEC encoder or decoder from Python, test it with
@@ -20,8 +20,8 @@ increasingly optimized and low-level code.
 
 > [!NOTE]
 > Backline is currently under heavy development — if you have suggestions on the API or use-cases
-> you'd like covered, please open a GitHub issue in the relevant repository ([PennyLane](https://github.com/pennylaneai/pennylane/issues) or [Catalyst](https://github.com/pennylaneai/catalyst/issues)), or reach out to quantum@amd.com and
-> backline@xanadu.ai. We'd love to hear about how you're using the library, collaborate on
+> you'd like covered, please open a GitHub issue in the relevant repository ([PennyLane](https://github.com/pennylaneai/pennylane/issues) or [Catalyst](https://github.com/pennylaneai/catalyst/issues)), or reach out to backline@xanadu.ai and
+> quantum@amd.com. We'd love to hear about how you're using the library, collaborate on
 > development, or integrate additional devices and frontends.
 
 ## Key Features
