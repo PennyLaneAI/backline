@@ -121,7 +121,8 @@ If you are doing research using Backline and PennyLane, please cite our papers:
 ```bibtex
 @misc{lee2026,
   title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
-  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
+  author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes and Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
+  year={2026},
   eprint={2609.09270},
   archivePrefix={arXiv},
   primaryClass={quant-ph},

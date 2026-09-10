@@ -48,14 +48,53 @@ authors:
     family-names: "O'Riordan"
     orcid: "https://orcid.org/0000-0002-6758-9433"
 
-# TODO: once the manuscript is on arXiv, uncomment and fill in. GitHub then shows
-# the paper — not this software entry — as the preferred citation.
-# preferred-citation:
-#   type: article
-#   title: "Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"
-#   authors: []          # same list as above
-#   journal: arXiv preprint
-#   year: 2026
-#   identifiers:
-#     - type: other
-#       value: "arXiv:"
+preferred-citation:
+  type: article
+  title: "Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"
+  authors:
+    - given-names: Joseph K. L.
+      family-names: Lee
+      orcid: "https://orcid.org/0000-0002-1648-2740"
+    - given-names: Mehrdad
+      family-names: Malekmohammadi
+      orcid: "https://orcid.org/0000-0002-4393-7923"
+    - given-names: Hong-Sheng
+      family-names: Zheng
+      orcid: "https://orcid.org/0009-0004-6408-9996"
+    - given-names: Shuli
+      family-names: Shu
+      orcid: "https://orcid.org/0000-0001-6528-8584"
+    - given-names: Cheick
+      family-names: Doumbia
+      orcid: "https://orcid.org/0009-0007-5171-490X"
+    - given-names: Kalman
+      family-names: Szenes
+      orcid: "https://orcid.org/0009-0006-3642-0674"
+    - given-names: Mehran
+      family-names: Zamani Abnili
+      orcid: "https://orcid.org/0000-0002-3860-6417"
+    - given-names: Thomas
+      family-names: Ainsworth
+      orcid: "https://orcid.org/0009-0003-6940-8709"
+    - given-names: Matthew
+      family-names: Seymour
+    - given-names: Thomas
+      family-names: Germain
+      orcid: "https://orcid.org/0009-0007-0289-1686"
+    - given-names: Leonhard
+      family-names: Neuhaus
+      orcid: "https://orcid.org/0000-0002-0488-3774"
+    - given-names: Josh
+      family-names: Izaac
+      orcid: "https://orcid.org/0000-0003-2640-0734"
+    - given-names: Lee J.
+      family-names: "O'Riordan"
+      orcid: "https://orcid.org/0000-0002-6758-9433"
+  journal: arXiv preprint
+  year: 2026
+  month: 9
+  doi: "10.48550/arXiv.2609.09270"
+  url: "https://arxiv.org/abs/2609.09270"
+  identifiers:
+    - type: other
+      value: "arXiv:2609.09270"
