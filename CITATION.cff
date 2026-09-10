@@ -1,100 +1,95 @@
-cff-version: 1.2.0
-message: "If you use Backline in your research, please cite it as below."
-title: Backline
-abstract: >-
-  An open platform for compilation and low-latency execution that dynamically
-  connects quantum workloads to the right classical engine.
-type: software
-license: Apache-2.0
-repository-code: "https://github.com/PennyLaneAI/backline"
-url: "https://github.com/PennyLaneAI/backline"
+cff-version: "1.2.0"
+abstract: An open platform for compilation and low-latency execution that
+  dynamically connects quantum workloads to the right classical engine.
 authors:
-  - given-names: Joseph K. L.
-    family-names: Lee
-    orcid: "https://orcid.org/0000-0002-1648-2740"
-  - given-names: Mehrdad
-    family-names: Malekmohammadi
-    orcid: "https://orcid.org/0000-0002-4393-7923"
-  - given-names: Hong-Sheng
-    family-names: Zheng
-    orcid: "https://orcid.org/0009-0004-6408-9996"
-  - given-names: Shuli
-    family-names: Shu
-    orcid: "https://orcid.org/0000-0001-6528-8584"
-  - given-names: Cheick
-    family-names: Doumbia
-    orcid: "https://orcid.org/0009-0007-5171-490X"
-  - given-names: Kalman
-    family-names: Szenes
-    orcid: "https://orcid.org/0009-0006-3642-0674"
-  - given-names: Mehran
-    family-names: Zamani Abnili
-    orcid: "https://orcid.org/0000-0002-3860-6417"
-  - given-names: Thomas
-    family-names: Ainsworth
-    orcid: "https://orcid.org/0009-0003-6940-8709"
-  - given-names: Matthew
-    family-names: Seymour
-  - given-names: Thomas
-    family-names: Germain
-    orcid: "https://orcid.org/0009-0007-0289-1686"
-  - given-names: Leonhard
-    family-names: Neuhaus
-    orcid: "https://orcid.org/0000-0002-0488-3774"
-  - given-names: Josh
-    family-names: Izaac
-    orcid: "https://orcid.org/0000-0003-2640-0734"
-  - given-names: Lee J.
-    family-names: "O'Riordan"
-    orcid: "https://orcid.org/0000-0002-6758-9433"
-
+- family-names: Lee
+  given-names: Joseph K. L.
+  orcid: "https://orcid.org/0000-0002-1648-2740"
+- family-names: Malekmohammadi
+  given-names: Mehrdad
+  orcid: "https://orcid.org/0000-0002-4393-7923"
+- family-names: Zheng
+  given-names: Hong-Sheng
+  orcid: "https://orcid.org/0009-0004-6408-9996"
+- family-names: Shu
+  given-names: Shuli
+  orcid: "https://orcid.org/0000-0001-6528-8584"
+- family-names: Doumbia
+  given-names: Cheick
+  orcid: "https://orcid.org/0009-0007-5171-490X"
+- family-names: Szenes
+  given-names: Kalman
+  orcid: "https://orcid.org/0009-0006-3642-0674"
+- family-names: Zamani Abnili
+  given-names: Mehran
+  orcid: "https://orcid.org/0000-0002-3860-6417"
+- family-names: Ainsworth
+  given-names: Thomas
+  orcid: "https://orcid.org/0009-0003-6940-8709"
+- family-names: Seymour
+  given-names: Matthew
+- family-names: Germain
+  given-names: Thomas
+  orcid: "https://orcid.org/0009-0007-0289-1686"
+- family-names: Neuhaus
+  given-names: Leonhard
+  orcid: "https://orcid.org/0000-0002-0488-3774"
+- family-names: Izaac
+  given-names: Josh
+  orcid: "https://orcid.org/0000-0003-2640-0734"
+- family-names: "O'Riordan"
+  given-names: Lee J.
+  orcid: "https://orcid.org/0000-0002-6758-9433"
+license: Apache-2.0
+message: If you use Backline in your research, please cite our article.
 preferred-citation:
-  type: article
-  title: "Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"
   authors:
-    - given-names: Joseph K. L.
-      family-names: Lee
-      orcid: "https://orcid.org/0000-0002-1648-2740"
-    - given-names: Mehrdad
-      family-names: Malekmohammadi
-      orcid: "https://orcid.org/0000-0002-4393-7923"
-    - given-names: Hong-Sheng
-      family-names: Zheng
-      orcid: "https://orcid.org/0009-0004-6408-9996"
-    - given-names: Shuli
-      family-names: Shu
-      orcid: "https://orcid.org/0000-0001-6528-8584"
-    - given-names: Cheick
-      family-names: Doumbia
-      orcid: "https://orcid.org/0009-0007-5171-490X"
-    - given-names: Kalman
-      family-names: Szenes
-      orcid: "https://orcid.org/0009-0006-3642-0674"
-    - given-names: Mehran
-      family-names: Zamani Abnili
-      orcid: "https://orcid.org/0000-0002-3860-6417"
-    - given-names: Thomas
-      family-names: Ainsworth
-      orcid: "https://orcid.org/0009-0003-6940-8709"
-    - given-names: Matthew
-      family-names: Seymour
-    - given-names: Thomas
-      family-names: Germain
-      orcid: "https://orcid.org/0009-0007-0289-1686"
-    - given-names: Leonhard
-      family-names: Neuhaus
-      orcid: "https://orcid.org/0000-0002-0488-3774"
-    - given-names: Josh
-      family-names: Izaac
-      orcid: "https://orcid.org/0000-0003-2640-0734"
-    - given-names: Lee J.
-      family-names: "O'Riordan"
-      orcid: "https://orcid.org/0000-0002-6758-9433"
-  journal: arXiv preprint
-  year: 2026
-  month: 9
-  doi: "10.48550/arXiv.2609.09270"
+  - family-names: Lee
+    given-names: Joseph K. L.
+    orcid: "https://orcid.org/0000-0002-1648-2740"
+  - family-names: Malekmohammadi
+    given-names: Mehrdad
+    orcid: "https://orcid.org/0000-0002-4393-7923"
+  - family-names: Zheng
+    given-names: Hong-Sheng
+    orcid: "https://orcid.org/0009-0004-6408-9996"
+  - family-names: Shu
+    given-names: Shuli
+    orcid: "https://orcid.org/0000-0001-6528-8584"
+  - family-names: Doumbia
+    given-names: Cheick
+    orcid: "https://orcid.org/0009-0007-5171-490X"
+  - family-names: Szenes
+    given-names: Kalman
+    orcid: "https://orcid.org/0009-0006-3642-0674"
+  - family-names: Zamani Abnili
+    given-names: Mehran
+    orcid: "https://orcid.org/0000-0002-3860-6417"
+  - family-names: Ainsworth
+    given-names: Thomas
+    orcid: "https://orcid.org/0009-0003-6940-8709"
+  - family-names: Seymour
+    given-names: Matthew
+  - family-names: Germain
+    given-names: Thomas
+    orcid: "https://orcid.org/0009-0007-0289-1686"
+  - family-names: Neuhaus
+    given-names: Leonhard
+    orcid: "https://orcid.org/0000-0002-0488-3774"
+  - family-names: Izaac
+    given-names: Josh
+    orcid: "https://orcid.org/0000-0003-2640-0734"
+  - family-names: "O'Riordan"
+    given-names: Lee J.
+    orcid: "https://orcid.org/0000-0002-6758-9433"
+  date-published: 2026-09-08
+  doi: 10.48550/arXiv.2609.09270
+  journal: arXiv
+  title: "Python in the front, party in the Backline: compiling quantum
+    workloads across CPUs, GPUs, and FPGAs"
+  type: article
   url: "https://arxiv.org/abs/2609.09270"
-  identifiers:
-    - type: other
-      value: "arXiv:2609.09270"
+repository-code: "https://github.com/PennyLaneAI/backline"
+title: Backline
+type: software
+url: "https://github.com/PennyLaneAI/backline"
