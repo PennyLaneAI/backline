@@ -15,8 +15,7 @@ increasingly optimized and low-level code.
 > [!NOTE]
 > The core Backline implementation and source code lives natively within the PennyLane and Catalyst
 > repositories. This repository holds the demonstrations, benchmarks, and the cross-build system
-> accompanying the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"*update the
-> link*](tk).
+> accompanying the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"](https://arxiv.org/abs/2609.09270).
 
 > [!NOTE]
 > Backline is currently under heavy development — if you have suggestions on the API or use-cases
@@ -42,12 +41,12 @@ increasingly optimized and low-level code.
 
 ## Getting started
 
-Once Backline is [installed](#installation), you can get started by checking out the [Backline tutorial*update link*](https://pennylane.ai/demos/backline), then working your way through the
+Once Backline is [installed](#installation), you can get started by checking out the [Backline tutorial](https://pennylane.ai/demos/backline), then working your way through the
 [demos in this repository](demos/README.md). To reproduce the paper, run those and the
 [benchmarks](benchmarks/README.md).
 
 Also make sure to check out the [technical documentation](https://docs.pennylane.ai/en/latest/code/qp_backline.html),
-[technical manuscript*update the link later*](tk), and [Backline whitepaper*update the link later*](https://xanadu.ai/docs/backline-whitepaper.pdf).
+[technical manuscript](https://arxiv.org/abs/2609.09270), and [Backline whitepaper](https://xanadu.ai/docs/backline-whitepaper.pdf).
 
 ## Architectural overview
 
@@ -74,7 +73,7 @@ traps that have caught agents here before.
 
 ## Repository Overview
 
-This repository contains the benchmark data from the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"*update the link*](https://arxiv.org/abs/tk),
+This repository contains the benchmark data from the manuscript ["Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs"](https://arxiv.org/abs/2609.09270),
 as well as the cross-build system for reproducing the stack demonstrated.
 
 In addition, a variety of demos are provided, highlighting the compilation, deployment, and
@@ -119,12 +118,14 @@ Backline is the work of [many contributors](https://github.com/PennyLaneAI/backl
 
 If you are doing research using Backline and PennyLane, please cite our papers:
 
-```
-@article{tk,
+```bibtex
+@misc{lee2026,
   title={Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs},
   author={Joseph K. L. Lee and Mehrdad Malekmohammadi and Hong-Sheng Zheng and Shuli Shu and Cheick Doumbia and Kalman Szenes Mehran Zamani Abnili and Thomas Ainsworth and Matthew Seymour and Thomas Germain and Leonhard Neuhaus and Josh Izaac and Lee J. O'Riordan},
-  journal={arXiv preprint arXiv:tk},
-  year={2026}
+  eprint={2609.09270},
+  archivePrefix={arXiv},
+  primaryClass={quant-ph},
+  url={https://arxiv.org/abs/2609.09270},
 }
 ```
 
