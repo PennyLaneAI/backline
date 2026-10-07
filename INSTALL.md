@@ -23,7 +23,7 @@ tier you have and stop there.
 | a verbs device | tier 2 on | soft-RoCE counts; `ibv_devices` must list one |
 | `wget`, `gnupg`, `rsync` | tier 3 on | to add the ROCm repository, and to copy the server's sysroot |
 | ROCm 6 or newer | tier 3 on | from AMD's apt repository. For an NVIDIA card, CUDA 12.8 or newer |
-| a second host with a GPU | tier 3 on | reached over SSH, with `NOPASSWD` sudo. Tier 3 cannot run on one machine |
+| a second host with a GPU | tier 3 on | reached over SSH, with sudo (`NOPASSWD`, or see below for a password). Tier 3 cannot run on one machine |
 | a VPK120 board | tier 4 | on the same fabric |
 
 ROCm is required on the machine that builds a GPU backend. The machine that runs it
@@ -325,9 +325,18 @@ That host also requires the vendor runtime where the loader can find it, `/opt/r
 or `/usr/local/cuda/lib64` for NVIDIA, either registered with `ldconfig` or on
 `LD_LIBRARY_PATH`. Otherwise the backend fails to load and the coprocessor does not start.
 
-`NOPASSWD` sudo is required there: the executor pins threads and runs at realtime priority.
-Setting `sudo = false` in `config/machines.toml` produces a working run without it, at the cost
-of the pinning and scheduling the latency figures depend on.
+Sudo is required there: the executor pins threads and runs at realtime priority. `NOPASSWD` sudo
+needs nothing more. Otherwise, name an environment variable holding the password in that
+machine's `[<machine>.executor]` table, and set it without echoing it or writing it to history:
+
+```bash
+# config/machines.toml:  sudo_password_env = "SERVER_SUDO_PW"
+read -rsp "server sudo password: " SERVER_SUDO_PW && export SERVER_SUDO_PW; echo
+```
+
+Left unset, the launch prompts for the password instead. Setting `sudo = false` in
+`config/machines.toml` produces a working run without sudo, at the cost of the pinning and
+scheduling the latency figures depend on.
 
 ### Build and deploy its bundle
 
