@@ -62,7 +62,7 @@ export PATH=/opt/rocm/bin:$PATH
 
 # 3. Catalyst and PennyLane
 #    This builds from source. To run demo 1 with pre-built wheels, see following section.
-git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
+git clone --branch main --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 cd "$CATALYST_ROOT"
 python3 -m venv .venv && source .venv/bin/activate
@@ -74,7 +74,7 @@ make all
 pip install triton
 
 # 5. backline
-git clone --branch v0.1.0b1 https://github.com/PennyLaneAI/backline.git ~/backline
+git clone --branch main https://github.com/PennyLaneAI/backline.git ~/backline
 
 # 6. bundles for the remote machines, for tier 3 on
 cd ~/backline/config/xbuild
@@ -121,17 +121,17 @@ Demo 1 can be executed using either [pre-built wheels](#from-wheel) for PennyLan
 #### From wheel
 
 ```bash
-pip install pennylane-catalyst==0.16.0b1 \
-  -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 \
-  -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 \
-  -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
+pip install --pre pennylane-catalyst --extra-index-url https://test.pypi.org/simple/
 ```
+
+This installs the latest nightly, built from Catalyst's `main` branch, together with the PennyLane
+and Lightning versions it pins.
 
 #### From source
 ```bash
 export CATALYST_ROOT=~/catalyst          # your own path
 
-git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
+git clone --branch main --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 ```
 

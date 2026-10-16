@@ -90,7 +90,7 @@ with low-latency execution.
 ## Installation
 
 Backline requires a recent version of PennyLane, Catalyst, and Lightning. We
-recommend installing version `v0.46.0b1` for [PennyLane](https://github.com/PennyLaneAI/pennylane/tree/v0.46.0b1) and [Lightning](https://github.com/PennyLaneAI/pennylane-lightning/tree/v0.46.0b1), `v0.16.0b1` for [Catalyst](https://github.com/PennyLaneAI/catalyst/tree/v0.16.0b1) (either from source or using pre-built wheels for local demos).
+recommend installing [Catalyst](https://github.com/PennyLaneAI/catalyst) and  from its `main` branch (either from source or using the nightly wheels for local demos), which installs the PennyLane and Lightning versions it pins.
 
 To install Backline, please see [`INSTALL.md`](INSTALL.md) for instructions and requirements. Note
 that due to the wide range of system, network, and hardware configurations you can use Backline
