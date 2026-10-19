@@ -13,9 +13,6 @@ calls it lowers to:
     post          hand the slot to the transport, which writes it to the coprocessor
     collect       block until the correction lands in the reply slot
 
-Each of these reports failure through its return value, so every one is followed by a check that
-stops the program with an error naming the call.
-
 Read it alongside demo 2 to see what the frontend does on your behalf, or as a starting point for
 driving the transport directly. The circuit either side of the decode is unchanged.
 
@@ -32,14 +29,12 @@ from placement import REMOTE_CPU_CTRL, REMOTE_GPU_COPROC
 
 # The transport's C entry points, declared with the types the compiler must emit for each call.
 # "buf" is an input buffer, "out" an output one, and "ptr" the opaque session handle.
-GET_SESSION = qp.runtime_declare("__catalyst__transport__get_session", "(i32, str) -> ptr")
+GET_SESSION = qp.runtime_declare("__catalyst__transport__get_session__call", "(i32, str) -> ptr")
 STAGE_PAYLOAD = qp.runtime_declare(
-    "__catalyst__transport__stage_payload", "(ptr, buf, u64, u32) -> i32"
+    "__catalyst__transport__stage_payload__call", "(ptr, buf, u64, u32) -> i32"
 )
-POST = qp.runtime_declare("__catalyst__transport__post", "(ptr, u32) -> i32")
-COLLECT = qp.runtime_declare("__catalyst__transport__collect", "(ptr, out, u64) -> i32")
-CHECK = qp.runtime_declare("__catalyst__transport__check", "(i32, str)")
-CHECK_SESSION = qp.runtime_declare("__catalyst__transport__check_session", "(ptr, str)")
+POST = qp.runtime_declare("__catalyst__transport__post__call", "(ptr, u32) -> i32")
+COLLECT = qp.runtime_declare("__catalyst__transport__collect__call", "(ptr, out, u64) -> i32")
 
 # Which end of the link this program is. The controller sends syndromes and waits for corrections.
 ROLE_CONTROLLER = 0
@@ -160,12 +155,11 @@ def decode(syndrome, decoder_id, session):
     packed = jnp.pad(jnp.packbits(jnp.array(syndrome), bitorder="little"), (0, PACKED_BYTES))[
         :PACKED_BYTES
     ]
-    status = qp.runtime_call(STAGE_PAYLOAD, session, packed, PACKED_BYTES, decoder_id)
-    qp.runtime_call(CHECK, status, "stage_payload")
-    status = qp.runtime_call(POST, session, WORK_ITEM)
-    qp.runtime_call(CHECK, status, "post")
-    status, correction = qp.runtime_call(COLLECT, session, PACKED_BYTES, out_bytes=PACKED_BYTES)
-    qp.runtime_call(CHECK, status, "collect")
+    qp.runtime_call(STAGE_PAYLOAD, session, packed, PACKED_BYTES, decoder_id)
+    qp.runtime_call(POST, session, WORK_ITEM)
+    _status, correction = qp.runtime_call(
+        COLLECT, session, PACKED_BYTES, out_bytes=PACKED_BYTES
+    )
     return jnp.unpackbits(correction, bitorder="little", count=PACKED_BITS).astype(bool)
 
 
@@ -184,7 +178,6 @@ def encoded_decoded_circuit(error_kind):
     logical_circuit()
 
     session = qp.runtime_call(GET_SESSION, ROLE_CONTROLLER, "gpu-coproc")
-    qp.runtime_call(CHECK_SESSION, session, "get_session")
 
     for error_qubit in range(N):
         add_error(error_qubit, error_kind)
