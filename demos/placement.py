@@ -51,6 +51,9 @@ Node fields
         directory contributes the files inside it, and a file is copied as itself.
     ``sudo``
         Start the executor as root, required where the target's devices are not world-accessible.
+    ``sudo_password_env``
+        Where sudo asks for a password, the name of the environment variable holding it. Only the
+        name goes in ``machines.toml``; without it, the launch prompts for the password.
     ``env``, ``executor_bin``
         The environment of the executor process, and the command that starts it.
     ``plugins``
