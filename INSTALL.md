@@ -366,6 +366,9 @@ export BACKLINE_BUNDLES=~/bundles
 The sysroot is copied off the machine itself, which is why that step takes an SSH address.
 `make bundle` gathers what `make build` produced, so build the components first.
 
+On a Mac, `gpu-coprocessor` cannot be built here; see
+[troubleshooting](config/xbuild/docs/05-troubleshooting.md) for building it on the server.
+
 `BACKLINE_BUNDLES` is one directory holding one entry per bundle name. A relative path is
 resolved against the repository root.
 
