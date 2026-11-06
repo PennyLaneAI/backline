@@ -125,7 +125,12 @@ _LOCAL_ENDPOINT = qp.Endpoint(_CONFIG["local"]["fabric"], LOCAL_OOB_PORT)
 _SERVER_CFG = _CONFIG["server"]["config"]
 _SERVER_ENDPOINT = qp.Endpoint(_CONFIG["server"]["fabric"], OOB_PORT)
 
-_VPK_CFG = _CONFIG["vpk"]["config"]
+# The bitstream the board carries decides its controller's backend, and how a coprocessor is
+# reached by that controller.
+_BOARD = _CONFIG["vpk"][_CONFIG["vpk"]["bitstream"]]
+_VPK_CFG = _BOARD["config"]
+_VPK_COPROC_CFG = _BOARD["coproc_config"]
+_VPK_COPROC_ENDPOINT = qp.Endpoint(_BOARD["coproc_endpoint"], OOB_PORT)
 
 # ------------------------------------------- libraries --------------------------------------------
 # A remote node identifies a library by filename, the bundle having been deployed alongside the
@@ -184,6 +189,15 @@ REMOTE_VPK_CTRL = dict(
     remote=True,
     executor_options=_executor("vpk", _PORTS["vpk"]),
     hardware="fpga",
+    backend=_BOARD["backend"],
     init_args={"config": _VPK_CFG})
-"""The controller on the VPK120 board. The hwhs engine posts the syndrome and detects the reply in
+"""The controller on the VPK120 board. Its engine posts the syndrome and detects the reply in
 hardware, so no CPU is in the round trip."""
+
+REMOTE_VPK_GPU_COPROC = dict(
+    remote=True,
+    endpoint=_VPK_COPROC_ENDPOINT,
+    executor_options=_executor("server", _PORTS["gpu_coproc"]),
+    hardware="gpu",
+    init_args={"config": f"{_VPK_COPROC_CFG};gpu=0"})
+"""REMOTE_GPU_COPROC as the board's controller reaches it."""

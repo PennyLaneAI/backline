@@ -14,7 +14,7 @@ import triton
 import triton.language as tl
 from pennylane.backline import triton_decoder
 
-from placement import REMOTE_GPU_COPROC, REMOTE_VPK_CTRL
+from placement import REMOTE_VPK_CTRL, REMOTE_VPK_GPU_COPROC
 
 
 def _pack_lookup_table(values, no_error=0xF):
@@ -54,7 +54,7 @@ steane_triton_decoder = triton_decoder(
 
 ctrl = qp.Controller(name="fpga-controller", **REMOTE_VPK_CTRL)
 coproc = qp.Coprocessor(name="gpu-coproc", coprocessor_fn=steane_triton_decoder,
-                        **REMOTE_GPU_COPROC)
+                        **REMOTE_VPK_GPU_COPROC)
 dev = qp.Backline(controller=ctrl, coprocessors=[coproc], transport="rdma", qec_code="steane")
 
 
