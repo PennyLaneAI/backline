@@ -25,7 +25,7 @@ Three machines appear in these demos:
 |---|---|---|
 | this machine | where you launch. It compiles the program and drives the run | `[local]`, when it runs nodes itself |
 | the server | a remote x86-64 Linux machine with a GPU and an RDMA NIC | `[server]` |
-| the board | a VPK120 | `[vpk]` |
+| the board | a VPK120, carrying the bitstream `[vpk] bitstream` names | `[vpk]` |
 
 Which machine runs which node:
 

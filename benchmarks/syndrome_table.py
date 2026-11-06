@@ -23,7 +23,7 @@ import tempfile
 SLOT = 64
 """sizeof(PayloadSlot), which is also the engine's stride through both tables."""
 
-SLOTS = 512
+SLOTS = 256
 """Entries in each of the two tables. The engine walks this many before repeating, and placement
 passes the byte size below to the backend as demo_depth, so the two cannot disagree."""
 
@@ -74,7 +74,7 @@ be checked -- read the trace, not the comparison count."""
 
 
 def spread(bits, checks=8):
-    """Expand a check bitmap into the byte-per-check form the decoders read.
+    """Expand a check bitmap into the byte-per-check form the Steane decoders read.
 
     A syndrome is a ``memref<?xi1>``, which lowers to one byte per element, so check ``i`` lands in
     the low bit of byte ``i`` rather than packed beside its neighbours in byte 0. Writing the

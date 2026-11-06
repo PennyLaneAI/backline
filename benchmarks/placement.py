@@ -67,13 +67,23 @@ def _executor(machine, port):
 
 # -------------------------------------------- machines --------------------------------------------
 
-_SERVER_CFG = _CONFIG["server"]["config"]
+VPK_BITSTREAM = _CONFIG["vpk"]["bitstream"]
+"""The bitstream the board carries, which decides its controller and how the server is reached."""
 
-_SERVER_ENDPOINT = qp.Endpoint(_CONFIG["server"]["fabric"], OOB_PORT)
+_BOARD = _CONFIG["vpk"][VPK_BITSTREAM]
 
-_VPK_CFG = _CONFIG["vpk"]["config"]
+# Every node on the server is a coprocessor answering the board, so it takes the board's link.
+_SERVER_CFG = _BOARD["coproc_config"]
 
-_VPK_CFG_SWHS = _CONFIG["vpk"]["config_swhs"]
+_SERVER_ENDPOINT = qp.Endpoint(_BOARD["coproc_endpoint"], OOB_PORT)
+
+_VPK_CFG = _BOARD["config"]
+
+# None where the bitstream has no software-handshake arrangement.
+_VPK_CFG_SWHS = _BOARD.get("config_swhs")
+
+VPK_CLK_MHZ = _BOARD["clk_mhz"]
+"""The engine's core clock, which the pacer knobs count."""
 
 # Three ways to drive the same board, so they share one executor and are never used together.
 _VPK_EXEC = _executor("vpk", _PORTS["vpk"])
@@ -90,6 +100,9 @@ _ECHO_CPU_LIB = "libecho_coprocessor_cpu.so"
 # compiler's mapping cannot name, so a node selects it through init_args["backend_lib"]. The
 # filename keeps the device's older fpga_verbs spelling, being what the deployed bundles carry.
 _SWHS_CTRL_LIB = "libcatalyst_transport_fpga_verbs_controller.so"
+
+VPK_CTRL_LIB = f"libcatalyst_transport_{_BOARD['backend']}_controller.so"
+"""The engine-driven controller for the board's bitstream."""
 
 # ------------------------------------- node configurations ----------------------------------------
 
@@ -117,9 +130,10 @@ REMOTE_VPK_CTRL = dict(
     remote=True,
     executor_options=_VPK_EXEC,
     hardware="fpga",
+    backend=_BOARD["backend"],
     init_args={"config": _VPK_CFG},
 )
-"""The controller on the VPK120 board: the hwhs engine posts the syndrome and detects the reply
+"""The controller on the VPK120 board: its engine posts the syndrome and detects the reply
 itself, the host issuing one round at a time (``CTRL=hw-handshake-sw-loop``)."""
 
 REMOTE_VPK_CTRL_SWHS = dict(
@@ -134,7 +148,8 @@ reply (``CTRL=sw-handshake``)."""
 # The PL pacer drives the rounds instead of the host. One W1P write latches the run and the fabric
 # emits a send every `freq + (lfsr & span)` core-clock cycles by itself, which keeps host scheduling
 # jitter out of the tail being measured. Every knob is in raw hardware units, cycles and bit masks,
-# what the registers take. The core clock is 200 MHz, so 1 cycle = 5 ns and 1 ms = 200_000 cycles.
+# what the registers take. The core clock is VPK_CLK_MHZ: at ERNIC's 200 MHz 1 cycle = 5 ns and
+# 1 ms = 200_000 cycles.
 
 # Defaults for the knobs, shared with the benchmark's command line so both agree.
 PACER_FREQ_DEFAULT = 0  # cycles between sends; 0 = back-to-back, and 200_000 = 1 ms apart
@@ -149,14 +164,15 @@ PACER_TRACE_OUT_DEFAULT = "/tmp/rtt_trace.csv"
 PACER_TRACE_PA = 0x9200_0000  # must match assign_bd_address for the trace axi_bram_ctrl
 PACER_TRACE_ENTRIES = 1 << 20  # must match hw_handshake's C_TRACE_AW
 
-# The engine reads syndromes from 0x8000_0000 and expected replies from one PACER_SYN_DEPTH above
+# The engine reads syndromes from 0x8000_0000 and expected replies from one table size above
 # it, so BRAM has to hold both. Slot i holds Payload{ value = i+1, decoder_id = 0 }, and its
 # seq_num does not matter, because the engine overwrites that with its own round counter on the
 # way out (hh_orchestrator S_DAT_ISS). The table may be shorter than the run, since only the data
 # repeats.
-from syndrome_table import (
-    SYN_DEPTH as PACER_SYN_DEPTH,
-)  # noqa: E402  pylint: disable=wrong-import-position
+from syndrome_table import (  # noqa: E402  pylint: disable=wrong-import-position
+    SLOT as PACER_SLOT_BYTES,
+    SLOTS as PACER_SLOTS_DEFAULT,
+)
 
 
 def paced_controller(
@@ -165,6 +181,7 @@ def paced_controller(
     span=PACER_SPAN_DEFAULT,
     seed=PACER_SEED_DEFAULT,
     trace_out=PACER_TRACE_OUT_DEFAULT,
+    slots=PACER_SLOTS_DEFAULT,
 ):
     """The VPK120 controller with the PL pacer driving the rounds and recording every one.
 
@@ -174,6 +191,7 @@ def paced_controller(
         seed: LFSR seed for the jitter.
         rounds: rounds to run before the pacer stops.
         trace_out: where on the board to write the trace.
+        slots: entries in the pacer's table, which it sends in turn and repeats.
 
     Returns:
         dict: spread into a ``qp.Controller``.
@@ -201,7 +219,7 @@ def paced_controller(
         + (f";demo_span=0x{span:X}" if span else "")
         + f";demo_seed={seed}"
         + f";demo_cnt={rounds}"
-        + f";demo_depth={PACER_SYN_DEPTH}"
+        + f";demo_depth={slots * PACER_SLOT_BYTES}"
         + f";demo_trace=0x{PACER_TRACE_PA:X}"
         + f";demo_trace_out={trace_out}"
     )

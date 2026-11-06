@@ -102,6 +102,13 @@ def _parse_args():
         "(default: %(default)s)",
     )
     ap.add_argument(
+        "--qldpc-lib",
+        metavar="PATH",
+        help="use a prebuilt qLDPC decoder instead of compiling one. Triton publishes no macOS "
+        "wheel, so a Mac names one built on the coprocessor host. The symbol is read from "
+        "PATH's sibling .sym",
+    )
+    ap.add_argument(
         "-o",
         "--out",
         metavar="PATH",
@@ -123,7 +130,7 @@ def _parse_args():
     pacer = ap.add_argument_group(
         "pacer",
         "Only for --ctrl hw-handshake-hw-loop, where the fabric issues the rounds. "
-        "All in core-clock cycles at 200 MHz, so 1 cycle = 5 ns.",
+        f"All in core-clock cycles at {CLK_MHZ:g} MHz, so 1 cycle = {1000 / CLK_MHZ:g} ns.",
     )
     pacer.add_argument(
         "--pacer-freq",
@@ -142,6 +149,12 @@ def _parse_args():
         type=integer,
         default=placement.PACER_SEED_DEFAULT,
         help="LFSR seed for the jitter (default: %(default)s)",
+    )
+    pacer.add_argument(
+        "--pacer-slots",
+        type=integer,
+        default=placement.PACER_SLOTS_DEFAULT,
+        help="entries in the pacer's table, which it sends in turn (default: %(default)s)",
     )
     pacer.add_argument(
         "--pacer-trace-out",
@@ -193,8 +206,9 @@ ROLE_COPROCESSOR = 1
 # The handshake is the posting of the syndrome and the detection of the reply:
 #
 #   sw-handshake   the CPU posts through ibverbs and polls for the reply, the swhs backend.
-#   hw-handshake   the hwhs engine posts the syndrome and detects the reply itself, so the RTT is
-#                  measured in the engine's own clock domain rather than around a host call.
+#   hw-handshake   the board's engine posts the syndrome and detects the reply itself, so the RTT
+#                  is measured in the engine's own clock domain rather than around a host call.
+#                  Which engine, hwhs or hwhs-hsb, is machines.toml's [vpk] bitstream.
 #
 # The loop is the issuing of one round after another:
 #
@@ -206,7 +220,7 @@ ROLE_COPROCESSOR = 1
 #                  PACER_SPAN / PACER_SEED (see placement.py).
 # ``node`` is a function of the parsed arguments, uniformly: the first two ignore them and the
 # paced cell builds its controller from the pacer knobs.
-HWHS_CTRL_LIB = "libcatalyst_transport_hwhs_controller.so"
+ENGINE_CTRL_LIB = placement.VPK_CTRL_LIB
 VERBS_CTRL_LIB = "libcatalyst_transport_fpga_verbs_controller.so"
 
 _CTRLS = {
@@ -214,7 +228,7 @@ _CTRLS = {
         node=lambda args: REMOTE_VPK_CTRL_SWHS, flags=0, lib=VERBS_CTRL_LIB
     ),
     "hw-handshake-sw-loop": dict(
-        node=lambda args: REMOTE_VPK_CTRL, flags=0, lib=HWHS_CTRL_LIB
+        node=lambda args: REMOTE_VPK_CTRL, flags=0, lib=ENGINE_CTRL_LIB
     ),
     "hw-handshake-hw-loop": dict(
         node=lambda args: placement.paced_controller(
@@ -223,9 +237,10 @@ _CTRLS = {
             seed=args.pacer_seed,
             rounds=args.iters,
             trace_out=args.pacer_trace_out,
+            slots=args.pacer_slots,
         ),
         flags=0,
-        lib=HWHS_CTRL_LIB,
+        lib=ENGINE_CTRL_LIB,
     ),
 }
 
@@ -267,8 +282,11 @@ _COPROCS = {
     for hw, fn in per_hw.items()
 }
 
-# Which of syndrome_table's tables the pacer replays to each decoder
-_SYNDROME_TABLES = {"steane": "STEANE", "qldpc": "HGP_Z"}
+# Which of syndrome_table's tables the pacer replays to each decoder, and whether it is written as
+# packed bits. The Steane decoders read one byte per check, a memref<?xi1>. The Triton qLDPC
+# decoder reads check c from bit c, which is what qp.backline.decode sends it with bitpack=True.
+# Spread into bytes, it would see check 0 alone.
+_SYNDROME_TABLES = {"steane": ("STEANE", False), "qldpc": ("HGP_Z", True)}
 
 # The code definition lives with the demos, so the benchmark decodes the same code they encode
 # into. It is loaded by path rather than imported by name, the two directories not being a package
@@ -310,6 +328,29 @@ def _build_qldpc(platform):
     return fn.name, fn.lib_path
 
 
+def _prebuilt_qldpc(lib):
+    """The symbol and library of a qLDPC decoder compiled elsewhere, named by ``--qldpc-lib``.
+
+    The symbol cannot be derived from the file: it is a hash of the parity checks and the decoder
+    options, so it is written beside the library when the decoder is built and read back from
+    there. Both files are checked here, since a missing symbol would otherwise surface only at
+    ``set_coprocessor_fn``, once the run is set up.
+    """
+    lib = Path(lib).expanduser().resolve()
+    sym = lib.with_suffix(".sym")
+    if not lib.is_file():
+        raise SystemExit(f"--qldpc-lib {lib}: no such file")
+    if not sym.is_file():
+        raise SystemExit(
+            f"{sym} not found: the decoder's symbol is written beside the library when it is "
+            f"built, so copy both files together"
+        )
+    name = sym.read_text().strip()
+    if not name:
+        raise SystemExit(f"{sym} is empty: it should hold the decoder's symbol on one line")
+    return name, str(lib)
+
+
 # ------------------------------------------- one run ----------------------------------------------
 
 # Fixed by the wire protocol and the board, so the same for every cell.
@@ -323,7 +364,7 @@ SAMPLE_BYTES = 8  # start_benchmark returns one 8-byte RTT per round
 ROUNDS_BYTES = 8  # and one 8-byte count of the rounds that actually ran
 WORK_ITEM = 0
 DECODER_ID = 0
-CLK_MHZ = 200.0  # the controller's core clock, which the CSV reports cycles against
+CLK_MHZ = placement.VPK_CLK_MHZ  # the engine's core clock, which the CSV reports cycles against
 
 
 @dataclass(frozen=True)
@@ -353,12 +394,12 @@ class Run:
     args: argparse.Namespace  # the pacer knobs, which only the paced cell reads
 
 
-# The hwhs controller reserves capacity for its RTT vector up front so that appending a sample does
-# not allocate memory on the timed path. Once that capacity is exhausted, std::vector reallocates
-# mid-run, and copying the existing samples introduces a latency spike of tens of milliseconds into
-# the measured distribution. The fpga_verbs controller keeps no such vector, so sw-handshake has no
-# equivalent limit. Its only bound is the u32 used for iters; the operand encoder rejects
-# out-of-range values instead of wrapping them.
+# The engine's controller reserves capacity for its RTT vector up front so that appending a sample
+# does not allocate memory on the timed path. Once that capacity is exhausted, std::vector
+# reallocates mid-run, and copying the existing samples introduces a latency spike of tens of
+# milliseconds into the measured distribution. The fpga_verbs controller keeps no such vector, so
+# sw-handshake has no equivalent limit. Its only bound is the u32 used for iters; the operand
+# encoder rejects out-of-range values instead of wrapping them.
 RTT_SAMPLES_RESERVE = 3_000_000
 
 # A config reaches the backend through a fixed 256-byte string operand (STR_OPERAND_BYTES in
@@ -375,9 +416,9 @@ def _check_iters(ctrl, iters):
                 f"({placement.PACER_TRACE_ENTRIES:,}); "
                 f"{iters - placement.PACER_TRACE_ENTRIES:,} round(s) would go unrecorded."
             )
-    elif _CTRLS[ctrl]["lib"] == HWHS_CTRL_LIB and iters > RTT_SAMPLES_RESERVE:
+    elif _CTRLS[ctrl]["lib"] == ENGINE_CTRL_LIB and iters > RTT_SAMPLES_RESERVE:
         raise SystemExit(
-            f"--iters {iters:,} exceeds the hwhs RTT reserve ({RTT_SAMPLES_RESERVE:,}); "
+            f"--iters {iters:,} exceeds the controller's RTT reserve ({RTT_SAMPLES_RESERVE:,}); "
             f"std::vector would reallocate mid-run.\n"
             f"  Increase kRttSamplesReserve and rebuild. --ctrl {PACER_CELL} is limited to "
             f"{placement.PACER_TRACE_ENTRIES:,} rounds."
@@ -417,9 +458,14 @@ def resolve(args):
     decoder = cell["decoder"]
 
     fn, fn_lib = cell["fn"], None
-    if fn is None:
+    if fn is None and args.qldpc_lib:
+        fn, fn_lib = _prebuilt_qldpc(args.qldpc_lib)
+        say(f"[config] prebuilt qLDPC decoder {fn_lib} fn={fn}")
+    elif fn is None:
         say(f"[config] compiling the qLDPC decoder for {args.gpu_platform}")
         fn, fn_lib = _build_qldpc(args.gpu_platform)
+    elif args.qldpc_lib:
+        raise SystemExit(f"--qldpc-lib is read only by gpu-qldpc, not --coproc {coproc}")
 
     _check_iters(ctrl, args.iters)
 
@@ -428,13 +474,24 @@ def resolve(args):
     # the file is beside the executor when it opens it.
     syndromes, corrections, table_image = None, None, None
     ctrl_cfg = ctrl_node["init_args"]["config"]
+    if ctrl_cfg is None:
+        raise SystemExit(
+            f"--ctrl {ctrl}: the board's {placement.VPK_BITSTREAM} bitstream has no such "
+            f"arrangement in machines.toml"
+        )
     if ctrl == PACER_CELL and decoder in _SYNDROME_TABLES:
         import syndrome_table  # pylint: disable=import-outside-toplevel
 
-        prefix = _SYNDROME_TABLES[decoder]
+        prefix, packed = _SYNDROME_TABLES[decoder]
         syndromes = getattr(syndrome_table, f"{prefix}_SYNDROMES")
         corrections = getattr(syndrome_table, f"{prefix}_CORRECTIONS", None)
-        table_image = syndrome_table.build(syndromes, corrections)
+        table_image = syndrome_table.build(
+            syndromes,
+            corrections,
+            raw=packed,
+            slots=args.pacer_slots,
+            depth=args.pacer_slots * syndrome_table.SLOT,
+        )
         ctrl_cfg += f";demo_table={os.path.basename(table_image)}"
 
     _check_config("controller", ctrl_cfg)
@@ -471,8 +528,8 @@ def resolve(args):
 def report_config(run):
     """Print the selected cell, and for a paced run the cadence and where the trace lands."""
     print(
-        f"[config] ctrl={run.ctrl} coproc={run.coproc} flags={run.flags} "
-        f"iters={run.iters} -> {run.csv}"
+        f"[config] ctrl={run.ctrl} coproc={run.coproc} bitstream={placement.VPK_BITSTREAM} "
+        f"flags={run.flags} iters={run.iters} -> {run.csv}"
     )
     say(f"[config] controller  {run.ctrl_lib}\n[config]   {run.ctrl_cfg}", 2)
     say(
