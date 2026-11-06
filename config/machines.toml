@@ -60,8 +60,9 @@ executor_bin = "./catalyst-executor"
 
 [server.executor.env]
 # "." is the deployed bundle, beside the executor; the other entry is rdma-core v65's libibverbs
-# and libmlx5. The DOCA 2.8 libmlx5 rhino ships misses BlueFlame on every 64th send (+0.6 us).
-LD_LIBRARY_PATH = ".:/home/hongsheng.zheng/backline-build/rdma-core-v65/build/lib"
+# and libmlx5, shared on rhino under /opt/shared. The DOCA 2.8 libmlx5 rhino ships misses
+# BlueFlame on every 64th send (+0.6 us).
+LD_LIBRARY_PATH = ".:/opt/shared/rdma-core-v65/build/lib"
 
 # A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
 # executor runs as root to reach the engine's devices.
