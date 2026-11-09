@@ -51,4 +51,5 @@ reproduction instructions.
 |---|---|
 | [`data-main-text/`](data-main-text/) | the five `sw-for-loop` traces used by the manuscript |
 | [`data-appendix/`](data-appendix/) | the appendix inputs: ten `hw-for-loop` traces, `b2b` and `random-delayed` |
-| [`data-runs/20261030/`](data-runs/20261030/) | HSB vs ERNIC on the threadripper: the CPU echo `hw-for-loop` traces |
+| [`data-runs/20261030/`](data-runs/20261030/) | HSB vs ERNIC on the threadripper: CPU and GPU echo, `sw-for-loop` and `hw-for-loop` |
+| [`data-runs/20261105/`](data-runs/20261105/) | HSB vs ERNIC on rhino (GH200): CPU and GPU echo, `sw-for-loop` and `hw-for-loop` |

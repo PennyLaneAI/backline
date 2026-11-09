@@ -1,11 +1,12 @@
 # HSB vs ERNIC on the threadripper, 2026-10-30
 
-The CPU echo `hw-for-loop` traces behind the HSB-versus-ERNIC comparison.
+The CPU echo and GPU echo traces behind the HSB-versus-ERNIC comparison, in `sw-for-loop` and
+back-to-back `hw-for-loop`, 10^6 rounds each.
 
-| File | Bitstream | Engine clock |
+| Prefix | Bitstream | Engine clock |
 |---|---|---|
-| `hsb.hw-for-loop.cpu-echo.b2b.csv` | hwhs-hsb in front of NVIDIA's Holoscan Sensor Bridge | 250 MHz |
-| `ernic.hw-for-loop.cpu-echo.b2b.csv` | hwhs on AMD's ERNIC | 200 MHz |
+| `hsb.` | hwhs-hsb in front of NVIDIA's Holoscan Sensor Bridge | 250 MHz |
+| `ernic.` | hwhs on AMD's ERNIC | 200 MHz |
 
 ## Drawing the figures
 
@@ -22,8 +23,12 @@ From `benchmarks/`, once with `[vpk] bitstream = "hsb"` in `config/machines.toml
 
 ```bash
 BOARD=petalinux@192.168.3.15
-./bench.py --ctrl hw-handshake-hw-loop --coproc cpu-echo --iters 1000000 \
-  --pacer-freq 0 \
-  --pacer-trace-out /tmp/rtt_trace.csv
-scp "$BOARD":/tmp/rtt_trace.csv "<bitstream>.hw-for-loop.cpu-echo.b2b.csv"
+for C in cpu-echo gpu-echo; do
+  ./bench.py --ctrl hw-handshake-sw-loop --coproc "$C" --iters 1000000 \
+    -o "<bitstream>.sw-for-loop.$C.csv"
+  ./bench.py --ctrl hw-handshake-hw-loop --coproc "$C" --iters 1000000 \
+    --pacer-freq 0 \
+    --pacer-trace-out /tmp/rtt_trace.csv
+  scp "$BOARD":/tmp/rtt_trace.csv "<bitstream>.hw-for-loop.$C.b2b.csv"
+done
 ```
