@@ -3,6 +3,7 @@
 #   make                     every dataset
 #   make main-text           only the main-text dataset
 #   make appendix            only the appendix dataset
+#   make 20261030            only data-runs/20261030
 #   make list                what would be plotted, and with which plotter
 #   make clean               remove every figures/ directory
 #   make FLAGS='--logy'      override the plotting flags for this run
@@ -15,8 +16,8 @@
 PY    := python3
 FLAGS := --pct 100
 
-# Sweep directories are named YYYYMMDD; matched by shape rather than by a year.
-DATED_CSVS := $(wildcard 20[0-9][0-9][0-1][0-9][0-3][0-9]/*.csv)
+# Run and sweep directories under data-runs/ are named YYYYMMDD
+DATED_CSVS := $(wildcard data-runs/20[0-9][0-9][0-1][0-9][0-3][0-9]/*.csv)
 MAIN_TEXT_CSVS := $(wildcard data-main-text/*.csv)
 APPENDIX_CSVS := $(wildcard data-appendix/*.csv)
 CSVS := $(DATED_CSVS) $(MAIN_TEXT_CSVS) $(APPENDIX_CSVS)
@@ -28,7 +29,7 @@ figure  = $(dir $(1))figures/$(notdir $(1:.csv=.png))
 FIGURES := $(foreach c,$(CSVS),$(call figure,$(c)))
 MAIN_TEXT_FIGURES := $(foreach c,$(MAIN_TEXT_CSVS),$(call figure,$(c)))
 APPENDIX_FIGURES := $(foreach c,$(APPENDIX_CSVS),$(call figure,$(c)))
-DATED_DIRS := $(sort $(patsubst %/,%,$(dir $(DATED_CSVS))))
+DATED_DIRS := $(sort $(patsubst data-runs/%/,%,$(dir $(DATED_CSVS))))
 
 .PHONY: all main-text appendix list clean $(DATED_DIRS)
 
@@ -46,9 +47,8 @@ $(call figure,$(1)): $(1) $(call plotter,$(1))
 endef
 $(foreach c,$(CSVS),$(eval $(call PLOT_RULE,$(c))))
 
-# `make 20260812` plots just that dataset.
 define DIR_RULE
-$(1): $(foreach c,$(filter $(1)/%,$(CSVS)),$(call figure,$(c)))
+$(1): $(foreach c,$(filter data-runs/$(1)/%,$(CSVS)),$(call figure,$(c)))
 endef
 $(foreach d,$(DATED_DIRS),$(eval $(call DIR_RULE,$(d))))
 
@@ -56,5 +56,5 @@ list:
 	@$(foreach c,$(CSVS),printf '  %-62s <- %s\n' '$(call figure,$(c))' '$(call plotter,$(c))';)
 
 clean:
-	rm -rf 20[0-9][0-9][0-1][0-9][0-3][0-9]/figures
+	rm -rf data-runs/20[0-9][0-9][0-1][0-9][0-3][0-9]/figures
 	rm -rf data-main-text/figures data-appendix/figures
