@@ -492,7 +492,7 @@ def resolve(args):
             slots=args.pacer_slots,
             depth=args.pacer_slots * syndrome_table.SLOT,
         )
-        ctrl_cfg += f";demo_table={os.path.basename(table_image)}"
+        ctrl_cfg += f";pacer_table={os.path.basename(table_image)}"
 
     _check_config("controller", ctrl_cfg)
     _check_config("coprocessor", coproc_node["init_args"]["config"])

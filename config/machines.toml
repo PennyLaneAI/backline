@@ -15,7 +15,7 @@
 [paths]
 # CATALYST_ROOT and BACKLINE_BUNDLES override these. `bundles` holds one subdirectory per machine,
 # each that machine's stack, placed in its workspace before its executor starts.
-catalyst = "~/catalyst"
+# catalyst = "~/catalyst"
 # Where `make bundle` publishes, relative to the repository root. Every bundle xbuild builds
 # is linked here under its own name, whichever machine it was built for, which is the shape a
 # `deploy` entry below is resolved against. BACKLINE_BUNDLES overrides it with an absolute path.
@@ -40,36 +40,42 @@ gpu_coproc = 9813     # both: the coprocessor on the server's GPU
 config = "dev=rxe0;gid=1"
 fabric = "127.0.0.1"
 
-# An aarch64 server carrying an NVIDIA GPU and a fast NIC: rhino, a GH200 (Grace + H100) with a
-# ConnectX-7 (mlx5_1, enp1s0f1np1). Grace is one NUMA node; the kernel isolates cores 24-26.
-# The Dell this table described before is in ../../machines-dell/machines.dell-hsb.toml.
+# An x86_64 server carrying an AMD GPU and a fast NIC: a Dell PowerEdge with an MI210 and a
+# ConnectX-7 (mlx5_0, eno17295np0) on NUMA node 3, whose cores 18 and 19 the kernel isolates.
 [server]
-config = "dev=mlx5_1;gid=3;cpu_pin=24;rt=0"
-fabric = "192.168.1.10"
+config = "dev=mlx5_0;gid=3;cpu_pin=18;rt=1"
+# The board's ERNIC sends RDMA only to a peer it has a permanent ARP entry for, and its rootfs
+# forgets that entry at every boot, so after each one run on the board, as root:
+#   ip neigh replace 192.168.1.3 lladdr a4:a6:4e:73:fd:ce dev eth0 nud permanent
+fabric = "192.168.1.3"
 
 [server.executor]
-host = "192.168.3.12"
-triple = "aarch64-unknown-linux-gnu"
-# rhino's sudo asks for a password, so the executor runs as the login user: rt=0 above, and the
-# coprocessor thread is only pinned. Core 24 is isolated and tickless, so it needs no RT priority.
-sudo = false
-deploy = ["rhino-bundle"]
-# A login session's affinity already leaves out the isolated cores, so the executor's own threads
-# stay off 24 and only the coprocessor's thread moves there (cpu_pin).
-executor_bin = "./catalyst-executor"
+host = "192.168.3.16"
+triple = "x86_64-unknown-linux-gnu"
+sudo = true
+# Built for the threadripper, which had the same glibc, ROCm 7.2 and gfx90a GPU, so it runs as is.
+deploy = ["threadripper-bundle"]
+# numactl keeps the process and its buffers on the NIC's NUMA node, off the inter-die interconnect.
+# Its CPUs leave out the isolated 18 and 19, so only the coprocessor's real-time thread (cpu_pin)
+# lands there: the kernel never balances threads off an isolated core, and with RT throttling off
+# (sched_rt_runtime_us=-1) any thread placed on core 18 starves behind it, which hangs teardown.
+# executor_bin = "numactl --physcpubind=20-23 --membind=3 ./catalyst-executor"
+executor_bin = "taskset -c 20-23 numactl --membind=3 --  ./catalyst-executor"
 
 [server.executor.env]
-# "." is the deployed bundle, beside the executor; the other entry is rdma-core v65's libibverbs
-# and libmlx5, shared on rhino under /opt/shared. The DOCA 2.8 libmlx5 rhino ships misses
-# BlueFlame on every 64th send (+0.6 us).
-LD_LIBRARY_PATH = ".:/opt/shared/rdma-core-v65/build/lib"
+# "." is the deployed bundle, beside the executor; the other entry is the HIP runtime the GPU
+# backend was built against (7.2.53211). On this server /opt/rocm is a separate, newer ROCm whose
+# comgr crashes loading the bundle's kernels, so name the packaged 7.2.4 install explicitly.
+LD_LIBRARY_PATH = ".:/opt/rocm-7.2.4/lib"
 
 # A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
-# executor runs as root to reach the engine's devices.
+# executor requires /dev/mem and /dev/xib0.
 [vpk]
 # The bitstream the board carries now, one of the tables below. Everything that runs on the board,
 # or talks to it, follows this line.
+# bitstream = "balboa"
 bitstream = "hsb"
+# bitstream = "ernic"
 
 # One table per bitstream, each naming the controller's transport `backend` and its `config`, the
 # engine's core clock, and how a coprocessor on the server is reached by that controller: its
@@ -83,8 +89,8 @@ backend = "hwhs"
 config = "dev=xib_0;gid=1;sq_mem=bram;data_mem=bram;reply_mem=bram;reply_poll=hw;stride_log2=6"
 config_swhs = "dev=xib_0;gid=1;sq_mem=pl;data_mem=pl;reply_mem=pl;stride_log2=6"
 clk_mhz = 200
-coproc_config = "dev=mlx5_1;gid=3;cpu_pin=24;rt=0"
-coproc_endpoint = "192.168.1.10"
+coproc_config = "dev=mlx5_0;gid=3;cpu_pin=18;rt=1"
+coproc_endpoint = "192.168.1.3"
 
 # NVIDIA's Holoscan Sensor Bridge driven by the hwhs-hsb engine, from backline-hsb. The coprocessor
 # speaks HSB's wire on the GID of HSB's 192.168.0.0/24 subnet, and takes the handshake on the
@@ -94,8 +100,8 @@ backend = "hsb_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
 # gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on enp1s0f1np1 beside 192.168.1.10.
-coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;wire=hsb"
-coproc_endpoint = "192.168.3.12"
+coproc_config = "dev=mlx5_0;gid=5;cpu_pin=18;rt=1;wire=hsb;imm=0"
+coproc_endpoint = "192.168.3.16"
 
 # ETH Zurich's BALBOA RoCE v2 stack driven by the hwhs-balboa engine, from backline-roce. BALBOA
 # takes HSB's address, 192.168.0.2, so the coprocessor uses the same GID and handshake network.
@@ -103,8 +109,8 @@ coproc_endpoint = "192.168.3.12"
 backend = "balboa_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
-coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;wire=balboa"
-coproc_endpoint = "192.168.3.12"
+coproc_config = "dev=mlx5_0;gid=5;cpu_pin=18;rt=1;wire=balboa"
+coproc_endpoint = "192.168.3.16"
 
 [vpk.executor]
 host = "192.168.3.15"

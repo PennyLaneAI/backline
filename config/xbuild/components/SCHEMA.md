@@ -143,6 +143,9 @@ The build then requires the selected target to be native (same triple as the
 host) and fails with a clear explanation otherwise, rather than invoking `hipcc`
 with `--target=aarch64-linux-gnu` and emitting several hundred lines of errors.
 
+If the target names a `TARGET_BUILD_HOST`, the component is built on that machine
+over ssh instead, and the artifact is copied back here (see `targets/SCHEMA.md`).
+
 Such a component is also not given the target's machine flags or its sysroot's
 include and library paths: both describe a machine being built for, and this one
 is built for the host. It keeps the C++ standard, which describes the source.

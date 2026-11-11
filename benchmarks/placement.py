@@ -212,16 +212,15 @@ def paced_controller(
             f"{span + 1}, and they are not contiguous. Run pacer_span.py to pick one."
         )
 
-    # The backend calls this mode "demo" and its keys keep that spelling, being the firmware's ABI.
     config = (
-        _VPK_CFG + ";demo=hw"
-        + (f";demo_freq={freq}" if freq else "")
-        + (f";demo_span=0x{span:X}" if span else "")
-        + f";demo_seed={seed}"
-        + f";demo_cnt={rounds}"
-        + f";demo_depth={slots * PACER_SLOT_BYTES}"
-        + f";demo_trace=0x{PACER_TRACE_PA:X}"
-        + f";demo_trace_out={trace_out}"
+        _VPK_CFG + ";pacer=hw"
+        + (f";pacer_freq={freq}" if freq else "")
+        + (f";pacer_span=0x{span:X}" if span else "")
+        + f";pacer_seed={seed}"
+        + f";pacer_cnt={rounds}"
+        + f";pacer_depth={slots * PACER_SLOT_BYTES}"
+        + f";pacer_trace=0x{PACER_TRACE_PA:X}"
+        + f";pacer_trace_out={trace_out}"
     )
     return {
         **REMOTE_VPK_CTRL,

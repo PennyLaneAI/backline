@@ -84,6 +84,7 @@ with low-latency execution.
 * `config`: the cross-build system (xbuild) and the machines to run on ([`machines.toml`](config/machines.toml)) to
   reproduce the results from the manuscript.
 * `data`: the measurements themselves, and the notebook to plot.
+* `docs`: guides, such as [adding hardware](docs/adding-hardware.md) to Backline.
 * `demos`: demo programs, spanning from a single CPU machine to FPGA-to-GPU.
 * `scripts`: helpers for running the above.
 

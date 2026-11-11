@@ -182,6 +182,6 @@ It warns when a choice will not behave: an upper bound past the host's 5 s colle
 `kErrStuck` rather than waiting, a width error over 25% means the mask is the wrong tool for that
 range, and `--iters` turns the average interval into a wall-clock estimate.
 
-The `demo_freq` / `demo_span` it recommends are the firmware's ABI key names, which is what
+The `pacer_freq` / `pacer_span` it recommends are the backend's config keys, which is what
 [`placement.py`](placement.py) writes into the config string. On the command
 line they are `--pacer-freq` and `--pacer-span`, with the same values.
