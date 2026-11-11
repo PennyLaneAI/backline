@@ -503,6 +503,9 @@ else
   TARGET_GPU_ORIGIN_FLAG  := -Wl$(COMMA)-rpath$(COMMA)'$$ORIGIN'
 endif
 
+# HIP's headers from the install TARGET_GPU_SDK names. hipcc's NVIDIA path does not add them.
+TARGET_GPU_SDK_FLAG := $(if $(strip $(TARGET_GPU_SDK)),-isystem $(TARGET_GPU_SDK)/include,)
+
 # ── 5. Sysroot-derived include and library paths ─────────────────────────────
 # Deferred (=, not :=) so the shell only runs when a recipe actually needs them.
 # An eager := would probe a sysroot that may not exist yet, printing spurious

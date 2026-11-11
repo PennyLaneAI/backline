@@ -141,6 +141,7 @@ cleanup() {
   rm -f "$ROOT"/components/t-*.conf "$ROOT"/components/zz-*.conf "$ROOT"/components/aa-user.conf
   rm -f "$ROOT"/bundles/t-*.conf
   rm -rf "$ROOT"/build/*/components/zz-dep "$ROOT"/build/*/components/aa-user
+  rm -rf "$ROOT/build/t-cross"
 }
 trap cleanup EXIT
 
@@ -1424,7 +1425,47 @@ if make -C "$ROOT" -f "$ROOT/mk/component.mk" ROOT_DIR="$ROOT" TARGET=t-cross \
 else
   grep -q 'REQUIRES_NATIVE' "$TMP/out" && pass || fail "refused, but without explaining why"
 fi
-rm -f "$ROOT/targets/t-cross.conf"
+
+it "a native-only component for a cross target with TARGET_BUILD_HOST goes to that host"
+printf 'TARGET_BUILD_HOST=builder\n' >> "$ROOT/targets/t-cross.conf"
+expect_out_ok 'built on  : builder' make -C "$ROOT" -f "$ROOT/mk/component.mk" ROOT_DIR="$ROOT" \
+  TARGET=t-cross COMPONENT=gpu-coprocessor CATALYST=/tmp GPU_ARCH=gfx90a component-info
+
+it "a build on TARGET_BUILD_HOST copies the tree and sources there, and the host does not pass it on"
+# ssh and rsync are stubbed to work on a directory standing in for the host's home. The host
+# cannot build for a foreign triple either, so the build fails there with the native refusal.
+_fh=$TMP/fakehome; _stub=$TMP/stub; _rh=$_fh/.cache/xbuild/t-cross
+mkdir -p "$_stub" "$TMP/tsrc/a" "$TMP/tsrc/inc" "$_rh/xbuild/build/sysroots/t-cross"
+printf 'int f() { return 0; }\n' > "$TMP/tsrc/a/x.cpp"
+printf '#pragma once\n' > "$TMP/tsrc/inc/x.h"
+printf '#!/usr/bin/env bash\nshift; cd "%s" && exec bash -c "$*"\n' "$_fh" > "$_stub/ssh"
+printf '#!/usr/bin/env bash\na=(); for x in "$@"; do case $x in builder:*) a+=("%s/${x#builder:}") ;; *) a+=("$x") ;; esac; done\nexec %s "${a[@]}"\n' \
+  "$_fh" "$(command -v rsync)" > "$_stub/rsync"
+chmod +x "$_stub/ssh" "$_stub/rsync"
+cat > "$ROOT/components/t-remote.conf" <<'EOF'
+COMPONENT_NAME=t-remote
+COMPONENT_KIND=shared-library
+COMPONENT_SOURCE_ROOTS=TSRC
+COMPONENT_SOURCES=$(TSRC)/a/x.cpp
+COMPONENT_INCLUDES=$(TSRC)/inc
+COMPONENT_REQUIRES_NATIVE=yes
+EOF
+if ! have rsync; then
+  skip "no rsync on this host"
+elif PATH="$_stub:$PATH" make -C "$ROOT" -f "$ROOT/mk/component.mk" ROOT_DIR="$ROOT" \
+     TARGET=t-cross COMPONENT=t-remote TSRC="$TMP/tsrc" component >"$TMP/out" 2>&1; then
+  fail "the host cannot build for a foreign triple, so this must fail"
+elif [[ ! -f $_rh/xbuild/mk/rules.mk || ! -f $_rh/src/TSRC/a/x.cpp || ! -f $_rh/src/TSRC/inc/x.h ]]; then
+  fail "the tree or the component's sources did not reach the host"
+elif [[ $(grep -c 'copying sources' "$TMP/out") -ne 1 ]]; then
+  fail "the host passed the build on again"
+elif ! grep -q 'REQUIRES_NATIVE' "$TMP/out"; then
+  fail "the host's own error did not come back"
+else
+  pass
+fi
+rm -f "$ROOT/components/t-remote.conf" "$ROOT/targets/t-cross.conf"
+rm -rf "$ROOT/build/t-cross"
 
 # ── the GPU architecture: a target's decision, never the build host's ────────
 # Each of these covers a way the wrong answer is silent rather than loud.
@@ -1517,6 +1558,19 @@ if ! grep -q 'HIP_PLATFORM=nvidia' "$TMP/nv"; then
   fail "an NVIDIA device-code component was not pointed at nvcc"
 elif grep -q 'HIP_PLATFORM' "$TMP/plain"; then
   fail "an ordinary component was pointed at nvcc merely by sharing the target"
+else
+  pass
+fi
+
+it "TARGET_GPU_SDK points the vendor compiler and HIP's headers at that install"
+_gpuinfo gpu-coprocessor sm_80 TARGET_GPU_SDK=/opt/fake-hip >"$TMP/nv"
+_gpuinfo rt-transport sm_80 TARGET_GPU_SDK=/opt/fake-hip >"$TMP/plain"
+if ! grep -q '/opt/fake-hip/bin/hipcc' "$TMP/nv"; then
+  fail "the device-code component did not use the SDK's hipcc"
+elif ! grep -q -- '-isystem /opt/fake-hip/include' "$TMP/nv"; then
+  fail "the device-code component did not get the SDK's headers"
+elif grep -q 'fake-hip' "$TMP/plain"; then
+  fail "an ordinary component was given the GPU SDK"
 else
   pass
 fi

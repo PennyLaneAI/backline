@@ -4,7 +4,7 @@
 A paced run has no host in the loop, so it cannot stage a syndrome per round the way the sw-loop
 cells do. The engine reads them from BRAM instead: one table of what to send, and one of what the
 reply should be, laid out back to back. The controller loads the image at start-up through
-``demo_table=<file>`` and the engine walks it on its own, comparing every reply against the second
+``pacer_table=<file>`` and the engine walks it on its own, comparing every reply against the second
 half and counting the mismatches, which is where a paced run's correctness result comes from.
 
 The image is a file rather than config values because the controller's config is one 255-byte
@@ -25,7 +25,7 @@ SLOT = 64
 
 SLOTS = 256
 """Entries in each of the two tables. The engine walks this many before repeating, and placement
-passes the byte size below to the backend as demo_depth, so the two cannot disagree."""
+passes the byte size below to the backend as pacer_depth, so the two cannot disagree."""
 
 SYN_DEPTH = SLOTS * SLOT
 
@@ -172,4 +172,4 @@ if __name__ == "__main__":
         path=sys.argv[1] if len(sys.argv) > 1 else None,
     )
     dump(written)
-    print(f"\n[table] controller option: demo_table={os.path.basename(written)}")
+    print(f"\n[table] controller option: pacer_table={os.path.basename(written)}")
