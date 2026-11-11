@@ -62,6 +62,11 @@ Each of these was met in practice, and each fails in a way that points somewhere
   PennyLane and pennylane-lightning are upstream projects this work depends on, but the build
   system never reads them: they are Catalyst's own Python-side dependencies, installed into
   Catalyst's venv by the recipe in `INSTALL.md`. Do not add roots for them.
+* **The build and the demos find Catalyst separately.** The build reads `CATALYST=` (or
+  `config.mk`). The demos read the `CATALYST_ROOT` environment variable, falling back to
+  `[paths].catalyst` in `config/machines.toml`, and load decoder libraries from its
+  `runtime/build/lib`. Setting one does not set the other. Likewise, `BACKLINE_BUNDLES`
+  overrides `[paths].bundles` for both the demos and the benchmarks.
 * **`make build TARGET=vpk120` with no `COMPONENT=` ends in `Error 1`** even when everything
   wanted succeeded, because it also builds `example-executor`, which needs a cross-built LLVM.
   Name the component.
