@@ -11,6 +11,9 @@ QEC decode offloaded from a controller to a coprocessor over an RDMA fabric.
 PetaLinux); the coprocessor is an x86-64 host with an AMD GPU. Nothing deployed is meant to
 run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
 
+The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
+images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
+
 The one exception is deliberate and you will meet it first: `TARGET=example-native` builds
 for whatever host you are on, and on a Mac that is a Mach-O binary you run locally. It exists
 to prove the build machinery works before Catalyst, a sysroot or a board can be blamed, and
