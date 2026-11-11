@@ -107,6 +107,10 @@ Both must pass, and report the real counts including failures and skips. If you 
 anything under `config/xbuild/{mk,tools,sysroot}/`, add a test naming the failure it prevents
 — `config/xbuild/AGENTS.md` states that contract and the invariants behind it.
 
+To check a demo, run it directly (`cd demos && ./demo_1_local_cpu_to_local_cpu_memcpy.py`).
+Do not use `scripts/run-demo.sh` for that: it deletes `demos/expected_logs/<demo>/` and writes
+a new log there, replacing the committed reference. Run it only when asked to refresh that log.
+
 For anything you can settle by running something — `make show-target`, `make show-component`,
 `make sysroot-info`, `readelf`, `otool` — run it and quote the output rather than reasoning
 about it in prose.
