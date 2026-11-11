@@ -40,7 +40,7 @@ cd config/xbuild && make doctor TARGET=example-native && make sysroot TARGET=exa
 |---|---|---|
 | `config/xbuild/{targets,components,bundles}/` | inert `KEY=value` descriptions | yes — this is where work happens |
 | `config/xbuild/{mk,tools,sysroot}/` | the generic engine | rarely, and read `config/xbuild/AGENTS.md` first |
-| `demos/`, `benchmarks/`, `data/`, `paper/` | the experiments and their results | as asked |
+| `demos/`, `benchmarks/`, `data/` | the experiments and their results | as asked |
 | `scripts/` | helpers for running the above | as asked |
 | `config/xbuild/build/` | generated | **never** — `rm -rf build` must stay a complete reset |
 
