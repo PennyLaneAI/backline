@@ -11,6 +11,9 @@ QEC decode offloaded from a controller to a coprocessor over an RDMA fabric.
 PetaLinux); the coprocessor is an x86-64 host with an AMD GPU. Nothing deployed is meant to
 run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
 
+The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
+images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
+
 The one exception is deliberate and you will meet it first: `TARGET=example-native` builds
 for whatever host you are on, and on a Mac that is a Mach-O binary you run locally. It exists
 to prove the build machinery works before Catalyst, a sysroot or a board can be blamed, and
@@ -40,7 +43,8 @@ cd config/xbuild && make doctor TARGET=example-native && make sysroot TARGET=exa
 |---|---|---|
 | `config/xbuild/{targets,components,bundles}/` | inert `KEY=value` descriptions | yes — this is where work happens |
 | `config/xbuild/{mk,tools,sysroot}/` | the generic engine | rarely, and read `config/xbuild/AGENTS.md` first |
-| `demos/`, `benchmarks/`, `data/`, `paper/` | the experiments and their results | as asked |
+| `demos/`, `benchmarks/`, `data/` | the experiments and their results | as asked |
+| `config/machines.toml` | the machines, ports and paths the demos and benchmarks use | as asked; see Safety |
 | `scripts/` | helpers for running the above | as asked |
 | `config/xbuild/build/` | generated | **never** — `rm -rf build` must stay a complete reset |
 
@@ -61,6 +65,11 @@ Each of these was met in practice, and each fails in a way that points somewhere
   PennyLane and pennylane-lightning are upstream projects this work depends on, but the build
   system never reads them: they are Catalyst's own Python-side dependencies, installed into
   Catalyst's venv by the recipe in `INSTALL.md`. Do not add roots for them.
+* **The build and the demos find Catalyst separately.** The build reads `CATALYST=` (or
+  `config.mk`). The demos read the `CATALYST_ROOT` environment variable, falling back to
+  `[paths].catalyst` in `config/machines.toml`, and load decoder libraries from its
+  `runtime/build/lib`. Setting one does not set the other. Likewise, `BACKLINE_BUNDLES`
+  overrides `[paths].bundles` for both the demos and the benchmarks.
 * **`make build TARGET=vpk120` with no `COMPONENT=` ends in `Error 1`** even when everything
   wanted succeeded, because it also builds `example-executor`, which needs a cross-built LLVM.
   Name the component.
@@ -107,6 +116,10 @@ Both must pass, and report the real counts including failures and skips. If you 
 anything under `config/xbuild/{mk,tools,sysroot}/`, add a test naming the failure it prevents
 — `config/xbuild/AGENTS.md` states that contract and the invariants behind it.
 
+To check a demo, run it directly (`cd demos && ./demo_1_local_cpu_to_local_cpu_memcpy.py`).
+Do not use `scripts/run-demo.sh` for that: it deletes `demos/expected_logs/<demo>/` and writes
+a new log there, replacing the committed reference. Run it only when asked to refresh that log.
+
 For anything you can settle by running something — `make show-target`, `make show-component`,
 `make sysroot-info`, `readelf`, `otool` — run it and quote the output rather than reasoning
 about it in prose.
@@ -118,3 +131,6 @@ about it in prose.
   writes a description containing hostnames and usernames. Only ever point them at a host
   named in the conversation.
 * Do not commit `config/xbuild/build/`, `config/xbuild/config.mk`, or probe output.
+* `config/machines.toml` is committed. Pointing it at your own machines is a local edit: do not
+  commit those hostnames, addresses or usernames unless asked. Never write a password into it;
+  `sudo_password_env` holds only the name of the environment variable that holds the password.
