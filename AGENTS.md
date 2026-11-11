@@ -41,6 +41,7 @@ cd config/xbuild && make doctor TARGET=example-native && make sysroot TARGET=exa
 | `config/xbuild/{targets,components,bundles}/` | inert `KEY=value` descriptions | yes — this is where work happens |
 | `config/xbuild/{mk,tools,sysroot}/` | the generic engine | rarely, and read `config/xbuild/AGENTS.md` first |
 | `demos/`, `benchmarks/`, `data/` | the experiments and their results | as asked |
+| `config/machines.toml` | the machines, ports and paths the demos and benchmarks use | as asked; see Safety |
 | `scripts/` | helpers for running the above | as asked |
 | `config/xbuild/build/` | generated | **never** — `rm -rf build` must stay a complete reset |
 
@@ -122,3 +123,6 @@ about it in prose.
   writes a description containing hostnames and usernames. Only ever point them at a host
   named in the conversation.
 * Do not commit `config/xbuild/build/`, `config/xbuild/config.mk`, or probe output.
+* `config/machines.toml` is committed. Pointing it at your own machines is a local edit: do not
+  commit those hostnames, addresses or usernames unless asked. Never write a password into it;
+  `sudo_password_env` holds only the name of the environment variable that holds the password.
