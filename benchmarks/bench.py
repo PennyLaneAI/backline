@@ -201,7 +201,7 @@ ROLE_COPROCESSOR = 1
 #   sw-handshake   the CPU posts through ibverbs and polls for the reply, the swhs backend.
 #   hw-handshake   the board's engine posts the syndrome and detects the reply itself, so the RTT
 #                  is measured in the engine's own clock domain rather than around a host call.
-#                  Which engine, hwhs, hwhs-hsb or hwhs-balboa, is machines.toml's [vpk] bitstream.
+#                  Which engine, hwhs or hwhs-hsb, is machines.toml's [vpk] bitstream.
 #
 # The loop is the issuing of one round after another:
 #

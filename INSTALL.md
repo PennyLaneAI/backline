@@ -366,11 +366,23 @@ export BACKLINE_BUNDLES=~/bundles
 The sysroot is copied off the machine itself, which is why that step takes an SSH address.
 `make bundle` gathers what `make build` produced, so build the components first.
 
-On a Mac, `gpu-coprocessor` cannot be built here; see
-[troubleshooting](config/xbuild/docs/05-troubleshooting.md) for building it on the server.
+For Mac, `gpu-coprocessor` cannot be built here, because hipcc does not cross-compile. Set
+`TARGET_BUILD_HOST` in the target description to the server, and xbuild builds it there over ssh
+and copies the library back ([troubleshooting](config/xbuild/docs/05-troubleshooting.md)).
 
 `BACKLINE_BUNDLES` is one directory holding one entry per bundle name. A relative path is
 resolved against the repository root.
+
+### Reproduce on a GH200
+
+The steps above use the manuscript's server. For a GH200 (aarch64, NVIDIA H100), follow
+[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md): it sets up HIP for NVIDIA and
+builds the GPU backend on the GH200. Its machines file is `config/machines.rhino.toml`, which
+`BACKLINE_MACHINES` points the demos and the benchmarks at:
+
+```bash
+export BACKLINE_MACHINES=config/machines.rhino.toml
+```
 
 ## Tier 4 — FPGA demos (4, 5)
 
@@ -380,6 +392,9 @@ controller moves to the board, so the round trip crosses the fabric between the 
 These run the controller on a VPK120 board, which posts the syndrome and detects the reply in
 hardware. This assumes your VPK120 board is installed with the correct image and in a correct state.
 See https://github.com/PennylaneAI/backline-vpk120/tree/v0.1.0 for more information on setting the FPGA up.
+The board can also carry NVIDIA's Holoscan Sensor Bridge instead. To boot the board from that
+image, follow
+[`docs/bitstreams.md`](docs/bitstreams.md).
 
 The board's sysroot comes from distribution packages:
 
