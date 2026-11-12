@@ -102,13 +102,6 @@ def _parse_args():
         "(default: %(default)s)",
     )
     ap.add_argument(
-        "--qldpc-lib",
-        metavar="PATH",
-        help="use a prebuilt qLDPC decoder instead of compiling one. Triton publishes no macOS "
-        "wheel, so a Mac names one built on the coprocessor host. The symbol is read from "
-        "PATH's sibling .sym",
-    )
-    ap.add_argument(
         "-o",
         "--out",
         metavar="PATH",
@@ -208,7 +201,7 @@ ROLE_COPROCESSOR = 1
 #   sw-handshake   the CPU posts through ibverbs and polls for the reply, the swhs backend.
 #   hw-handshake   the board's engine posts the syndrome and detects the reply itself, so the RTT
 #                  is measured in the engine's own clock domain rather than around a host call.
-#                  Which engine, hwhs or hwhs-hsb, is machines.toml's [vpk] bitstream.
+#                  Which engine, hwhs, hwhs-hsb or hwhs-balboa, is machines.toml's [vpk] bitstream.
 #
 # The loop is the issuing of one round after another:
 #
@@ -328,29 +321,6 @@ def _build_qldpc(platform):
     return fn.name, fn.lib_path
 
 
-def _prebuilt_qldpc(lib):
-    """The symbol and library of a qLDPC decoder compiled elsewhere, named by ``--qldpc-lib``.
-
-    The symbol cannot be derived from the file: it is a hash of the parity checks and the decoder
-    options, so it is written beside the library when the decoder is built and read back from
-    there. Both files are checked here, since a missing symbol would otherwise surface only at
-    ``set_coprocessor_fn``, once the run is set up.
-    """
-    lib = Path(lib).expanduser().resolve()
-    sym = lib.with_suffix(".sym")
-    if not lib.is_file():
-        raise SystemExit(f"--qldpc-lib {lib}: no such file")
-    if not sym.is_file():
-        raise SystemExit(
-            f"{sym} not found: the decoder's symbol is written beside the library when it is "
-            f"built, so copy both files together"
-        )
-    name = sym.read_text().strip()
-    if not name:
-        raise SystemExit(f"{sym} is empty: it should hold the decoder's symbol on one line")
-    return name, str(lib)
-
-
 # ------------------------------------------- one run ----------------------------------------------
 
 # Fixed by the wire protocol and the board, so the same for every cell.
@@ -458,14 +428,9 @@ def resolve(args):
     decoder = cell["decoder"]
 
     fn, fn_lib = cell["fn"], None
-    if fn is None and args.qldpc_lib:
-        fn, fn_lib = _prebuilt_qldpc(args.qldpc_lib)
-        say(f"[config] prebuilt qLDPC decoder {fn_lib} fn={fn}")
-    elif fn is None:
+    if fn is None:
         say(f"[config] compiling the qLDPC decoder for {args.gpu_platform}")
         fn, fn_lib = _build_qldpc(args.gpu_platform)
-    elif args.qldpc_lib:
-        raise SystemExit(f"--qldpc-lib is read only by gpu-qldpc, not --coproc {coproc}")
 
     _check_iters(ctrl, args.iters)
 
