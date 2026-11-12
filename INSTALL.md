@@ -376,8 +376,8 @@ resolved against the repository root.
 ### Reproduce on a GH200
 
 The steps above use the manuscript's server. For a GH200 (aarch64, NVIDIA H100), follow
-[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md): it sets up HIP for NVIDIA and
-builds the GPU backend on the GH200. Its machines file is `config/machines.rhino.toml`, which
+[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md): it builds the GPU backend on the
+GH200. Its machines file is `config/machines.rhino.toml`, which
 `BACKLINE_MACHINES` points the demos and the benchmarks at:
 
 ```bash
