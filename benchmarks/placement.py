@@ -22,7 +22,11 @@ import pennylane as qp
 
 # --------------------------------------------- config ---------------------------------------------
 
-_MACHINES_TOML = Path(__file__).resolve().parent.parent / "config" / "machines.toml"
+_ROOT = Path(__file__).resolve().parent.parent
+# BACKLINE_MACHINES names another machines file relative to the repository root.
+_MACHINES_TOML = _ROOT / Path(
+    os.environ.get("BACKLINE_MACHINES") or "config/machines.toml"
+).expanduser()
 
 if not _MACHINES_TOML.is_file():
     raise SystemExit(
@@ -48,7 +52,7 @@ if not _bundles:
         f"    export {_BUNDLES_ENV}=/path/to/that/directory"
     )
 
-_BUNDLES = _MACHINES_TOML.parent.parent / Path(_bundles).expanduser()
+_BUNDLES = _ROOT / Path(_bundles).expanduser()
 if not _BUNDLES.is_dir():
     raise SystemExit(f"{_BUNDLES_ENV}={_bundles!r} is not a directory")
 
@@ -72,10 +76,13 @@ VPK_BITSTREAM = _CONFIG["vpk"]["bitstream"]
 
 _BOARD = _CONFIG["vpk"][VPK_BITSTREAM]
 
-# Every node on the server is a coprocessor answering the board, so it takes the board's link.
-_SERVER_CFG = _BOARD["coproc_config"]
+# Every node on the server is a coprocessor answering the board, so it takes the board's link: the
+# server's own unless the bitstream's table names another.
+_SERVER_CFG = _BOARD.get("coproc_config", _CONFIG["server"]["config"])
 
-_SERVER_ENDPOINT = qp.Endpoint(_BOARD["coproc_endpoint"], OOB_PORT)
+_SERVER_ENDPOINT = qp.Endpoint(
+    _BOARD.get("coproc_endpoint", _CONFIG["server"]["fabric"]), OOB_PORT
+)
 
 _VPK_CFG = _BOARD["config"]
 
@@ -115,7 +122,7 @@ REMOTE_CPU_COPROC = dict(
     },
     init_args={"config": _SERVER_CFG},
 )
-"""A coprocessor on the x86_64 server's CPU, decoding as a host function."""
+"""A coprocessor on the server's CPU, decoding as a host function."""
 
 REMOTE_GPU_COPROC = dict(
     remote=True,
@@ -148,11 +155,11 @@ reply (``CTRL=sw-handshake``)."""
 # The PL pacer drives the rounds instead of the host. One W1P write latches the run and the fabric
 # emits a send every `freq + (lfsr & span)` core-clock cycles by itself, which keeps host scheduling
 # jitter out of the tail being measured. Every knob is in raw hardware units, cycles and bit masks,
-# what the registers take. The core clock is VPK_CLK_MHZ: at ERNIC's 200 MHz 1 cycle = 5 ns and
-# 1 ms = 200_000 cycles.
+# what the registers take. The core clock is VPK_CLK_MHZ, so 1 ms is 1000 * VPK_CLK_MHZ cycles:
+# 200_000 on ERNIC and 250_000 on HSB and BALBOA.
 
 # Defaults for the knobs, shared with the benchmark's command line so both agree.
-PACER_FREQ_DEFAULT = 0  # cycles between sends; 0 = back-to-back, and 200_000 = 1 ms apart
+PACER_FREQ_DEFAULT = 0  # core-clock cycles between sends; 0 = back-to-back
 PACER_SPAN_DEFAULT = 0  # jitter mask, 2^N-1, where 0 = a fixed interval
 PACER_SEED_DEFAULT = 1  # a fixed seed gives a repeatable interval sequence
 # Absolute, and on the board: the controller writes it and the controller runs on the VPK120.
