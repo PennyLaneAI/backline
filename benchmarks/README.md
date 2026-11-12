@@ -110,14 +110,6 @@ only.
 That compile happens on the machine running the benchmark, which requires Triton. The precompiled
 kernels take their architecture from the bundle instead.
 
-Triton does not publish macOS wheel, so from a Mac the decoder needs to be compiled on the coprocessor host and
-named with `--qldpc-lib`. Its symbol is a hash of the parity checks and the decoder options, so the
-build writes it to a `.sym` file beside the library, and the two travel together:
-
-```bash
-./bench.py --coproc gpu-qldpc --qldpc-lib /path/to/qldpc_hgp13.so   # reads qldpc_hgp13.sym
-```
-
 ## Sweeping
 
 [`../scripts/sweep-bench.sh`](../scripts/sweep-bench.sh) runs every cell and collects the CSVs. Run
