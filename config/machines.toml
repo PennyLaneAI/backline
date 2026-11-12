@@ -94,6 +94,15 @@ clk_mhz = 250
 coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=hsb"
 coproc_endpoint = "192.168.3.14"
 
+# ETH Zurich's BALBOA RoCE v2 stack driven by the hwhs-balboa engine. BALBOA takes HSB's address,
+# 192.168.0.2, so the coprocessor uses the same GID and handshake network.
+[vpk.balboa]
+backend = "balboa_hwhs"
+config = "reply_to_us=1000000"
+clk_mhz = 250
+coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=balboa"
+coproc_endpoint = "192.168.3.14"
+
 [vpk.executor]
 host = "192.168.3.15"
 user = "petalinux"

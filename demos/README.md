@@ -24,7 +24,7 @@ Three machines appear in these demos:
 | | what it is | in [`../config/machines.toml`](../config/machines.toml) |
 |---|---|---|
 | this machine | where you launch. It compiles the program and drives the run | `[local]`, when it runs nodes itself |
-| the server | a remote x86-64 Linux machine with a GPU and an RDMA NIC | `[server]` |
+| the server | a remote Linux machine, x86-64 or aarch64, with a GPU and an RDMA NIC | `[server]` |
 | the board | a VPK120, carrying the bitstream `[vpk] bitstream` names | `[vpk]` |
 
 Which machine runs which node:
