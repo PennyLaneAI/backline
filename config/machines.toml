@@ -93,7 +93,7 @@ backend = "hsb_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
 # gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on enp1s0f1np1 beside 192.168.1.10.
-coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;wire=hsb"
+coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=hsb"
 coproc_endpoint = "192.168.3.12"
 
 # ETH Zurich's BALBOA RoCE v2 stack driven by the hwhs-balboa engine, from backline-roce. BALBOA
@@ -102,7 +102,7 @@ coproc_endpoint = "192.168.3.12"
 backend = "balboa_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
-coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;wire=balboa"
+coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=balboa"
 coproc_endpoint = "192.168.3.12"
 
 [vpk.executor]
