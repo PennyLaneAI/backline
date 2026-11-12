@@ -38,8 +38,8 @@ in [`data/data-runs/20261105/`](../data/data-runs/20261105/).
 | VPK120 board | `petalinux` | controller |
 
 The board's 100G port is cabled to a ConnectX-7 port on the GH200, `enp1s0f1np1` (`mlx5_1`) below.
-That port carries two link addresses: 192.168.1.10 (GID 3) for ERNIC, and 192.168.0.1 (GID 5) for
-HSB and BALBOA.
+That port carries two link addresses: 192.168.1.10 (GID 3: `::ffff:192.168.1.10, RoCE v2`) for ERNIC,
+and 192.168.0.1 (GID 5: `::ffff:192.168.0.1, RoCE v2`) for HSB and BALBOA.
 
 ## Bitstreams
 
@@ -48,7 +48,14 @@ booting the board from each image and checking it.
 
 ## 1. Set up the GH200
 
-Do this once, with sudo.
+Our GH200, `rhino`, runs Ubuntu 22.04.4 LTS with kernel `6.8.0-1040-nvidia-64k`. It has
+MLNX OFED package `24.07-0.6.1.0`, CUDA toolkit package `12.4.1-1`, and NVIDIA open driver
+package and DKMS version `550.144.03` installed.
+
+Run these commands on your GH200 machine.
+
+Do this setup once. `/opt/shared` is writable by everyone, so build rdma-core and HIP there as
+your normal user, without `sudo`. The commands below use CMake with `make`.
 
 **rdma-core v65.** Older libmlx5 builds, such as MLNX_OFED 24.07's, delay every 64th send by about
 0.6 µs; v65's does not. `config/machines.rhino.toml` loads it from `/opt/shared/rdma-core-v65`.
@@ -56,29 +63,38 @@ rdma-core is built with `IN_PLACE`, which compiles its own path into the librari
 where it is going to stay:
 
 ```bash
-sudo git clone --depth 1 -b v65.0 https://github.com/linux-rdma/rdma-core /opt/shared/rdma-core-v65
-cd /opt/shared/rdma-core-v65 && sudo mkdir build && cd build
-sudo cmake -GNinja -DIN_PLACE=1 -DNO_MAN_PAGES=1 -DNO_PYVERBS=1 -DENABLE_STATIC=0 .. && sudo ninja
+git clone --depth 1 -b v65.0 https://github.com/linux-rdma/rdma-core /opt/shared/rdma-core-v65
+cd /opt/shared/rdma-core-v65 && mkdir build && cd build
+cmake -G "Unix Makefiles" -DIN_PLACE=1 -DNO_MAN_PAGES=1 -DNO_PYVERBS=1 -DENABLE_STATIC=0 .. && make
 ```
 
-**HIP for NVIDIA.** xbuild compiles the GPU backend on the GH200 with the hipcc in
-`/opt/shared/hip-nv/hip-install`. HIP 7.1 and later need CUDA 12.8 for their NVIDIA path, so this
-uses the `rocm-7.0.2` tags, which work with CUDA 12.4:
+**CUDA and HIP for NVIDIA.** Our GH200 uses CUDA 12.4. Before running on your own GH200,
+update `CUDA_HOME` under `[server.executor.env]` in
+[`config/machines.rhino.toml`](../config/machines.rhino.toml#L67) to your CUDA toolkit's
+installation directory. The checked-in value, `/usr/local/cuda-12.4/`, matches `rhino`; your
+installation may use `/usr/local/cuda` or a different versioned path.
+
+xbuild expects HIP at `/opt/shared/hip-nv/hip-install` and uses its hipcc to compile the GPU
+backend on the GH200. If that HIP installation is missing, install it with the commands below.
+They use the `rocm-7.0.2` tags for compatibility with `rhino`'s CUDA 12.4; ROCm 7.1 needs
+CUDA 12.8, which is not installed on `rhino`. If your CUDA version differs, choose a compatible
+HIP release.
 
 ```bash
 H=/opt/shared/hip-nv; V=$H/rocm-7.0.2; P=$H/hip-install
-sudo mkdir -p $V && cd $V
-sudo git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hip
-sudo git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hipother
-sudo git clone --depth 1 --filter=blob:none --sparse -b rocm-7.0.2 https://github.com/ROCm/clr
-(cd clr && sudo git sparse-checkout set hipamd/include)
-cd $H && sudo git clone --depth 1 --filter=blob:none --sparse -b rocm-7.0.2 https://github.com/ROCm/llvm-project hipcc-src
-(cd hipcc-src && sudo git sparse-checkout set amd/hipcc)
-sudo cmake -S hipcc-src/amd/hipcc -B hipcc-src/amd/hipcc/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$P
-sudo ninja -C hipcc-src/amd/hipcc/build install
-sudo mkdir -p $P/include/hip
-sudo cp -r $V/hip/include/hip/. $V/hipother/hipnv/include/hip/. $V/clr/hipamd/include/hip/. $P/include/hip/
-sudo tee $P/include/hip/hip_version.h >/dev/null <<'EOF'
+mkdir -p $V && cd $V
+git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hip
+git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hipother
+git clone --depth 1 --filter=blob:none --sparse -b rocm-7.0.2 https://github.com/ROCm/clr
+(cd clr && git sparse-checkout set hipamd/include)
+cd $H && git clone --depth 1 --filter=blob:none --sparse -b rocm-7.0.2 https://github.com/ROCm/llvm-project hipcc-src
+(cd hipcc-src && git sparse-checkout set amd/hipcc)
+cmake -S hipcc-src/amd/hipcc -B hipcc-src/amd/hipcc/build -G "Unix Makefiles" \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$P
+make -C hipcc-src/amd/hipcc/build install
+mkdir -p $P/include/hip
+cp -r $V/hip/include/hip/. $V/hipother/hipnv/include/hip/. $V/clr/hipamd/include/hip/. $P/include/hip/
+tee $P/include/hip/hip_version.h >/dev/null <<'EOF'
 #ifndef HIP_VERSION_H
 #define HIP_VERSION_H
 #define HIP_VERSION_MAJOR 7
@@ -92,8 +108,9 @@ sudo tee $P/include/hip/hip_version.h >/dev/null <<'EOF'
 EOF
 ```
 
-**Isolated cores.** The coprocessor polls on core 24 (`cpu_pin=24` in the machines file). Add this to
-the kernel command line and reboot:
+**Isolated cores.** The coprocessor polls on core 24
+([`cpu_pin=24`](../config/machines.rhino.toml#L49) in the machines file). Add this to the kernel
+command line and reboot:
 
 ```
 isolcpus=managed_irq,domain,24-26 nohz_full=24-26 rcu_nocbs=24-26 irqaffinity=0-23,27-71
@@ -135,8 +152,12 @@ export PATH="$(brew --prefix llvm@22)/bin:$(brew --prefix lld@22)/bin:$PATH"   #
 ```
 
 **Catalyst.** Build it from source, following backline's
-[INSTALL.md, "Catalyst / From source"](../INSTALL.md#from-source), with this branch instead of the
-tagged release:
+[INSTALL.md, "Catalyst / From source"](../INSTALL.md#from-source), using the branch below instead
+of the tagged release.
+
+The requirements install below provides CMake and Ninja inside the venv. Catalyst and
+`make catalyst-llvm` require Ninja, even though their entry point is `make`; no system Ninja
+installation is needed.
 
 ```bash
 export CATALYST_ROOT=~/catalyst
@@ -209,6 +230,8 @@ ls build/bundles/rhino-bundle     # 11 entries, including libcatalyst_transport_
 `/usr/local/cuda`.
 
 ## 4. Before a session
+
+As mentioned before, the VPK120's 100G port is connected to the GH200's `enp1s0f1np1` interface (`mlx5_1`).
 
 Run these on the GH200. If `pgrep` lists executors of yours, kill them. If anything else differs,
 redo "After every boot" in [step 1](#1-set-up-the-gh200).
