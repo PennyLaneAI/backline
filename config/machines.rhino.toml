@@ -64,6 +64,7 @@ executor_bin = "./catalyst-executor"
 # "." is the deployed bundle; /opt/shared/rdma-core-v65 is a newer libmlx5
 # (benchmarks/reproduce-gh200.md).
 LD_LIBRARY_PATH = ".:/opt/shared/rdma-core-v65/build/lib"
+CUDA_HOME = "/usr/local/cuda-12.4/"
 
 # A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
 # executor runs as root to reach the engine's devices.
