@@ -77,7 +77,12 @@ import pennylane as qp
 
 # --------------------------------------------- config ---------------------------------------------
 
-_MACHINES_TOML = Path(__file__).resolve().parent.parent / "config" / "machines.toml"
+_ROOT = Path(__file__).resolve().parent.parent
+
+# BACKLINE_MACHINES names another machines file relative to the repository root.
+_MACHINES_TOML = _ROOT / Path(
+    os.environ.get("BACKLINE_MACHINES") or "config/machines.toml"
+).expanduser()
 
 if not _MACHINES_TOML.is_file():
     raise SystemExit(
@@ -99,7 +104,7 @@ LOCAL_OOB_PORT = _PORTS["local_oob"]
 
 _CATALYST = Path(os.environ.get("CATALYST_ROOT") or _CONFIG["paths"]["catalyst"]).expanduser()
 
-_BUNDLES = _MACHINES_TOML.parent.parent / Path(
+_BUNDLES = _ROOT / Path(
     os.environ.get("BACKLINE_BUNDLES") or _CONFIG["paths"]["bundles"]
 ).expanduser()
 _LIB = _CATALYST / "runtime/build/lib"
@@ -129,8 +134,11 @@ _SERVER_ENDPOINT = qp.Endpoint(_CONFIG["server"]["fabric"], OOB_PORT)
 # reached by that controller.
 _BOARD = _CONFIG["vpk"][_CONFIG["vpk"]["bitstream"]]
 _VPK_CFG = _BOARD["config"]
-_VPK_COPROC_CFG = _BOARD["coproc_config"]
-_VPK_COPROC_ENDPOINT = qp.Endpoint(_BOARD["coproc_endpoint"], OOB_PORT)
+# The server's own link unless the bitstream's table names another.
+_VPK_COPROC_CFG = _BOARD.get("coproc_config", _SERVER_CFG)
+_VPK_COPROC_ENDPOINT = qp.Endpoint(
+    _BOARD.get("coproc_endpoint", _CONFIG["server"]["fabric"]), OOB_PORT
+)
 
 # ------------------------------------------- libraries --------------------------------------------
 # A remote node identifies a library by filename, the bundle having been deployed alongside the
@@ -175,7 +183,7 @@ REMOTE_CPU_CTRL = dict(
     remote=True,
     executor_options=_CPU_CTRL_EXECUTOR,
     init_args={"config": _SERVER_CFG})
-"""The controller on the x86_64 server, over cpu_verbs."""
+"""The controller on the server's CPU, over cpu_verbs."""
 
 REMOTE_GPU_COPROC = dict(
     remote=True,
