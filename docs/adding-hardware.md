@@ -1,6 +1,6 @@
 # Adding hardware to Backline
 
-This covers two kinds of new hardware: a network IP on the FPGA, the way HSB joined
+This covers two kinds of new hardware: a network IP on the FPGA, the way HSB and BALBOA joined
 ERNIC, and a new coprocessor host, the way the GH200 joined the threadripper. The FPGA steps name
 the files HSB touched, so you can copy from a working example.
 
@@ -69,7 +69,7 @@ version.
 
 ### 3. The peer, if the IP needs a new one
 
-First check whether the IP's traffic matches an existing peer (`catalyst` or `hsb`, listed
+First check whether the IP's traffic matches an existing peer (`catalyst`, `hsb` or `balboa`, listed
 in `doc/dev/backline.rst`). If it does, set that peer and skip this step. Otherwise:
 
 - `runtime/lib/transport/common/interface/<Ip>Wire.hpp` describes the wire: where request n

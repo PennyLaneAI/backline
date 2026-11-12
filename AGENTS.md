@@ -8,8 +8,8 @@ Accompanying material for a manuscript, and the machinery to reproduce its measu
 QEC decode offloaded from a controller to a coprocessor over an RDMA fabric.
 
 **Every artifact that ships targets Linux.** The controller is a Xilinx VPK120 (aarch64,
-PetaLinux); the coprocessor is an x86-64 host with an AMD GPU. Nothing deployed is meant to
-run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
+PetaLinux); the coprocessor is an x86-64 host with an AMD GPU, or a GH200 (aarch64, NVIDIA GPU).
+Nothing deployed is meant to run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
 
 The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
 images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
@@ -76,8 +76,9 @@ Each of these was met in practice, and each fails in a way that points somewhere
 * **Verification refuses to run rather than passing silently.** On macOS the only `readelf`
   is Homebrew's keg-only llvm: `export PATH="$(brew --prefix llvm)/bin:$PATH"`.
 * **The FPGA device sources live in Catalyst, not here.** They moved to
-  `runtime/lib/transport/rdma/{fpga_verbs,fpga_hwhs,fpga_hsb,vendor}/`, so the `hwhs-*`,
-  `swhs-*` and `hsb-hwhs-*` components declare `CATALYST` and nothing else. Do not re-add a `devices/` tree.
+  `runtime/lib/transport/rdma/{fpga_verbs,fpga_hwhs,fpga_hsb,fpga_balboa,vendor}/`, so the
+  `hwhs-*`, `swhs-*`, `hsb-hwhs-*` and `balboa-hwhs-*` components declare `CATALYST` and nothing
+  else. Do not re-add a `devices/` tree.
 
   `rdma/vendor/infiniband/` there is a PATCHED copy of the system verbs headers. The single
   difference is one extra member, `void *(*_compat_reg_mr_ex)(void)`, in

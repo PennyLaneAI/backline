@@ -392,9 +392,8 @@ controller moves to the board, so the round trip crosses the fabric between the 
 These run the controller on a VPK120 board, which posts the syndrome and detects the reply in
 hardware. This assumes your VPK120 board is installed with the correct image and in a correct state.
 See https://github.com/PennylaneAI/backline-vpk120/tree/v0.1.0 for more information on setting the FPGA up.
-The board can also carry NVIDIA's Holoscan Sensor Bridge instead. To boot the board from that
-image, follow
-[`docs/bitstreams.md`](docs/bitstreams.md).
+The board can also carry NVIDIA's Holoscan Sensor Bridge or ETH Zurich's BALBOA instead. To boot
+the board from one of those images, follow [`docs/bitstreams.md`](docs/bitstreams.md).
 
 The board's sysroot comes from distribution packages:
 

@@ -2,15 +2,16 @@
 
 This guide reproduces the round-trip measurements for two FPGA network IPs on the VPK120: HSB
 (NVIDIA Holoscan Sensor Bridge) and ERNIC (AMD). The coprocessor is a GH200. For each IP you run
-four cells of 10^6 rounds: CPU echo and GPU echo, each in sw-loop and hw-loop.
+four cells of 10^6 rounds: CPU echo and GPU echo, each in sw-loop and hw-loop. The same steps also
+run a third IP, BALBOA (ETH Zurich's RoCE v2 stack).
 
 ## Code
 
 | Repository | Branch |
 |---|---|
-| [catalyst](https://github.com/PennyLaneAI/catalyst) | `rniczh/transport-lost-request` ([#3468](https://github.com/PennyLaneAI/catalyst/pull/3468)) |
+| [catalyst](https://github.com/PennyLaneAI/catalyst) | `rniczh/transport-balboa` ([#3469](https://github.com/PennyLaneAI/catalyst/pull/3469)) |
 | [backline](https://github.com/PennyLaneAI/backline) | `rniczh/support-hsb-and-balboa` |
-| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-hsb-patches` |
+| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-balboa-hwhs-sw` |
 
 ## Results to compare against
 
@@ -38,7 +39,7 @@ in [`data/data-runs/20261105/`](../data/data-runs/20261105/).
 
 The board's 100G port is cabled to a ConnectX-7 port on the GH200, `enp1s0f1np1` (`mlx5_1`) below.
 That port carries two link addresses: 192.168.1.10 (GID 3) for ERNIC, and 192.168.0.1 (GID 5) for
-HSB.
+HSB and BALBOA.
 
 ## Bitstreams
 
@@ -119,8 +120,8 @@ sudo ./rt_tune.sh 24,25,26 $NIC
 `SYSROOT_PROVIDER_ARGS` to the GH200. If it does not run Ubuntu 22.04, update the rest of that file
 with `make probe TARGET=rhino SSH=<user>@<host>` in `config/xbuild`. In
 `config/machines.rhino.toml`, set `host` under `[server.executor]` and `coproc_endpoint` under
-`[vpk.hsb]` to the GH200, `host` under `[vpk.executor]` to the board, and `dev`, `gid` and
-`cpu_pin` in `[server] config` and `[vpk.hsb] coproc_config` if they differ. The ssh user for the
+`[vpk.hsb]` and `[vpk.balboa]` to the GH200, `host` under `[vpk.executor]` to the board, and `dev`,
+`gid` and `cpu_pin` in `[server] config` and in both tables' `coproc_config` if they differ. The ssh user for the
 GH200 is your laptop login, unless you add `user = "<user>"` under `[server.executor]`.
 
 ## 2. Build on the laptop
@@ -139,7 +140,7 @@ tagged release:
 
 ```bash
 export CATALYST_ROOT=~/catalyst
-git clone --branch rniczh/transport-lost-request --recurse-submodules --shallow-submodules \
+git clone --branch rniczh/transport-balboa --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 cd "$CATALYST_ROOT"
 python3 -m venv .venv && source .venv/bin/activate
@@ -182,7 +183,8 @@ aarch64 LLVM.
 ```bash
 cd $X
 make build TARGET=vpk120 CATALYST=$C COMPONENT="executor rt-capi rtd-null-qubit rt-transport \
-    hwhs-capi-backend hwhs-controller-session swhs-capi-backend hsb-hwhs-capi-backend"
+    hwhs-capi-backend hwhs-controller-session swhs-capi-backend hsb-hwhs-capi-backend \
+    balboa-hwhs-capi-backend"
 make build TARGET=rhino CATALYST=$C COMPONENT="rt-transport rt-capi rtd-null-qubit \
     cpu-verbs-controller cpu-verbs-coprocessor echo-coprocessor-cpu steane-coprocessor-cpu gpu-coprocessor"
 make build TARGET=rhino CATALYST=$C COMPONENT=executor \
@@ -235,8 +237,8 @@ On the laptop, with the venv active, point backline at the GH200's machines file
 export BACKLINE_MACHINES=config/machines.rhino.toml
 ```
 
-Set `[vpk] bitstream` in `config/machines.rhino.toml` to the image on the board: `"hsb"` or
-`"ernic"`.
+Set `[vpk] bitstream` in `config/machines.rhino.toml` to the image on the board: `"hsb"`,
+`"balboa"` or `"ernic"`.
 
 First a smoke test of 1000 rounds:
 
@@ -274,6 +276,7 @@ the percentiles of `rtt_us` (sw-loop) or `ns` (hw-loop).
 | `bench.py` ends in a segmentation fault after the coprocessor fails | It leaves executors running on the GH200 and on the board. Kill them before the next run |
 | ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([step 4](#4-before-a-session)) |
 | HSB: the handshake completes, then every round times out | The board carries the stock HSB image, which sends WRITE_WITH_IMM. Boot the `hsb_hwhs/` image ([Bitstreams](#bitstreams)) |
+| BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
 | A result that does not match | Run the checks in [`docs/bitstreams.md`](../docs/bitstreams.md#checks) |
 | GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([step 3](#3-bundle)) |
 | Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib` |

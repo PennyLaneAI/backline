@@ -156,7 +156,7 @@ reply (``CTRL=sw-handshake``)."""
 # emits a send every `freq + (lfsr & span)` core-clock cycles by itself, which keeps host scheduling
 # jitter out of the tail being measured. Every knob is in raw hardware units, cycles and bit masks,
 # what the registers take. The core clock is VPK_CLK_MHZ, so 1 ms is 1000 * VPK_CLK_MHZ cycles:
-# 200_000 on ERNIC and 250_000 on HSB.
+# 200_000 on ERNIC and 250_000 on HSB and BALBOA.
 
 # Defaults for the knobs, shared with the benchmark's command line so both agree.
 PACER_FREQ_DEFAULT = 0  # core-clock cycles between sends; 0 = back-to-back
