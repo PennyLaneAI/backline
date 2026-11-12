@@ -23,7 +23,7 @@ import tempfile
 SLOT = 64
 """sizeof(PayloadSlot), which is also the engine's stride through both tables."""
 
-SLOTS = 256
+SLOTS = 512
 """Entries in each of the two tables. The engine walks this many before repeating, and placement
 passes the byte size below to the backend as pacer_depth, so the two cannot disagree."""
 
