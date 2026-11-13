@@ -6,7 +6,8 @@ ERNIC, and a new coprocessor host, the way the GH200 joined the threadripper.
 [HSB](https://github.com/nvidia-holoscan/holoscan-sensor-bridge), NVIDIA's Holoscan Sensor Bridge,
 is open-source FPGA IP that sends sensor data to a host over Ethernet as RoCE v2 traffic.
 [BALBOA](https://github.com/fpgasystems/Coyote) is the open-source RoCE v2 stack in ETH Zurich's
-Coyote.
+Coyote. The FPGA steps name the files HSB touched, so you can copy from a working example. BALBOA
+was added the same way, and the table lists its files too.
 
 ## What lives where
 
