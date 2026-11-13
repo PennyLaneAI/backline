@@ -41,16 +41,16 @@ Rhino installation uses:
 | Additional RDMA userspace libraries | rdma-core `v65.0`, built below |
 | HIP for NVIDIA | `rocm-7.0.2` sources, assembled below |
 
-Use these source branches for the software and board images:
+Use these versions for the software and board images:
 
-| Repository | Branch |
+| Repository | Version |
 |---|---|
-| [catalyst](https://github.com/PennyLaneAI/catalyst) | `rniczh/transport-balboa` ([#3469](https://github.com/PennyLaneAI/catalyst/pull/3469)) |
-| [backline](https://github.com/PennyLaneAI/backline) | `rniczh/support-hsb-and-balboa` |
-| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-balboa-hwhs-sw` |
+| [catalyst](https://github.com/PennyLaneAI/catalyst) | `v0.16.0b2` |
+| [backline](https://github.com/PennyLaneAI/backline) | `v0.1.0b2` |
+| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-balboa-hwhs-sw` ([#11](https://github.com/PennyLaneAI/backline-vpk120/pull/11)) |
 
 Board images and provisioning live in `backline-vpk120`.
-[`docs/bitstreams.md`](docs/bitstreams.md) covers booting and checking each image.
+[`INSTALL_FPGA.md`](INSTALL_FPGA.md) covers booting and checking each image.
 
 ## 1. Prepare the build machine
 
@@ -86,13 +86,13 @@ require Ninja even though their entry point is `make`.
 
 ### 1.2. Catalyst and PennyLane
 
-Build Catalyst from source with the branch above and the transport and executor enabled:
+Build Catalyst from source at the version above, with the transport and executor enabled:
 
 #### 1.2.1. Clone Catalyst
 
 ```bash
 export CATALYST_ROOT=~/catalyst
-git clone --branch rniczh/transport-balboa --recurse-submodules --shallow-submodules \
+git clone --branch v0.16.0b2 --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 ```
 
@@ -120,7 +120,7 @@ through `CATALYST=`, while the demos and benchmarks use `CATALYST_ROOT`.
 #### 1.3.1. Clone backline
 
 ```bash
-git clone --branch rniczh/support-hsb-and-balboa https://github.com/PennyLaneAI/backline.git ~/backline
+git clone --branch v0.1.0b2 https://github.com/PennyLaneAI/backline.git ~/backline
 ```
 
 #### 1.3.2. Set the build paths and SSH destinations
@@ -138,34 +138,33 @@ and addresses, and put the same values in the configuration files in
 
 ## 2. Install the GH200 libraries
 
-Run this section **on the GH200**. On Rhino, `/opt/shared` is writable by everyone. Build
-rdma-core and HIP there as your normal user, without `sudo`. The commands use CMake with make.
+Run this section **on the GH200**, as your normal user. `$OPT` below is the directory you build
+rdma-core and HIP in. Keep it, because both are used from there. The commands use CMake with make.
 
 ### 2.1. rdma-core v65
 
-Older libmlx5 builds, such as MLNX_OFED 24.07's may cause performance issue (we observed
-a delay every 64th send by about 0.6 µs); v65's does not.
-The runtime configuration loads it from `/opt/shared/rdma-core-v65`.
+Older libmlx5 builds, such as MLNX_OFED 24.07's, delay every 64th send; v65's does not.
 `IN_PLACE` compiles the build's own path into the libraries, so build it where it will stay:
 
 #### 2.1.1. Clone rdma-core
 
 ```bash
-git clone --depth 1 -b v65.0 https://github.com/linux-rdma/rdma-core /opt/shared/rdma-core-v65
+OPT=/path/that/stays
+git clone --depth 1 -b v65.0 https://github.com/linux-rdma/rdma-core $OPT/rdma-core-v65
 ```
 
 #### 2.1.2. Configure and build in place
 
 ```bash
-cd /opt/shared/rdma-core-v65 && mkdir build && cd build
+cd $OPT/rdma-core-v65 && mkdir build && cd build
 cmake -G "Unix Makefiles" -DIN_PLACE=1 -DNO_MAN_PAGES=1 -DNO_PYVERBS=1 -DENABLE_STATIC=0 .. && make
 ```
 
 ### 2.2. CUDA and HIP for NVIDIA
 
-Rhino uses CUDA 12.4 at `/usr/local/cuda-12.4/`. xbuild expects HIP at
-`/opt/shared/hip-nv/hip-install` and uses its hipcc to compile the GPU backend on the GH200.
-If that HIP installation is missing, install it below.
+Rhino uses CUDA 12.4 at `/usr/local/cuda-12.4/`. xbuild compiles the GPU backend on the GH200
+with the hipcc that `TARGET_GPU_SDK` in `config/xbuild/targets/rhino.conf` points to. If the GH200
+has no HIP for NVIDIA, install it below and set `TARGET_GPU_SDK` to `$OPT/hip-nv/hip-install`.
 
 These commands use the `rocm-7.0.2` tags for compatibility with Rhino's CUDA 12.4. ROCm 7.1
 needs CUDA 12.8, which is not installed on Rhino. If your CUDA version differs, use a compatible
@@ -174,7 +173,7 @@ HIP release and update the paths in [step 3](#3-configure-the-build-and-runtime)
 #### 2.2.1. Fetch the HIP sources
 
 ```bash
-H=/opt/shared/hip-nv; V=$H/rocm-7.0.2; P=$H/hip-install
+H=$OPT/hip-nv; V=$H/rocm-7.0.2; P=$H/hip-install
 mkdir -p $V && cd $V
 git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hip
 git clone --depth 1 -b rocm-7.0.2 https://github.com/ROCm/hipother
@@ -219,7 +218,7 @@ Edit these files in the backline checkout **on the build machine**:
 
 | File | Settings |
 |---|---|
-| [`config/xbuild/targets/rhino.conf`](config/xbuild/targets/rhino.conf) | Set `TARGET_BUILD_HOST` and `host=` in `SYSROOT_PROVIDER_ARGS` to the GH200 SSH destination. `TARGET_GPU_ARCH=sm_90` selects its GPU; `TARGET_GPU_SDK=/opt/shared/hip-nv/hip-install` selects the HIP installation. |
+| [`config/xbuild/targets/rhino.conf`](config/xbuild/targets/rhino.conf) | Set `TARGET_BUILD_HOST` and `host=` in `SYSROOT_PROVIDER_ARGS` to the GH200 SSH destination. `TARGET_GPU_ARCH=sm_90` selects its GPU; Set `TARGET_GPU_SDK` to your HIP installation, `$OPT/hip-nv/hip-install` from [step 2.2](#22-cuda-and-hip-for-nvidia). |
 | [`config/machines.rhino.toml`](config/machines.rhino.toml) | Set `[server.executor] host` and both `[vpk.hsb] coproc_endpoint` and `[vpk.balboa] coproc_endpoint` to the GH200 management address. Set `[vpk.executor] host` to the board. |
 
 The GH200 SSH user defaults to your build-machine login. If it differs, add `user = "<user>"`
@@ -236,7 +235,8 @@ In `config/machines.rhino.toml`, also check:
 
 #### 3.2.2. Set the runtime library path
 
-`[server.executor.env] LD_LIBRARY_PATH` includes `.:/opt/shared/rdma-core-v65/build/lib`.
+`[server.executor.env] LD_LIBRARY_PATH` includes `.:$OPT/rdma-core-v65/build/lib`, the rdma-core
+build from [step 2.1](#21-rdma-core-v65).
 The leading `.` is the deployed bundle.
 
 #### 3.2.3. Set the RDMA device, GIDs, and polling core
@@ -499,7 +499,7 @@ and reboot.
 
 ### 6.3. Select and check the board image
 
-Check the board using [`docs/bitstreams.md`](docs/bitstreams.md#checks), and set
+Check the board using [`INSTALL_FPGA.md`](INSTALL_FPGA.md#2-check-the-image), and set
 `[vpk] bitstream` in `config/machines.rhino.toml` to the installed image: `"hsb"`, `"balboa"`,
 or `"ernic"`. Reapply the ERNIC ARP entry whenever that image is booted.
 
