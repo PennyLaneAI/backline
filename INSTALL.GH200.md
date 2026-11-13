@@ -1,10 +1,10 @@
 # Installation and system tuning for GH200 (rhino)
 
-Use this guide to install the software and prepare the environment for a GH200 coprocessor
-connected to a VPK120 controller. It contains the Rhino-specific recipe previously in
-[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md), including its source branches,
-CUDA/HIP versions, and latency tuning. For this hardware, follow this guide in place of the
-general [`INSTALL.md`](INSTALL.md).
+Use this guide to prepare a GH200 coprocessor and VPK120 controller for
+[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md). It is self-contained,
+including the source branches, CUDA/HIP versions, and latency tuning used for those experiments.
+
+For a generic backline installation, use [`INSTALL.md`](INSTALL.md) instead.
 
 After installation, follow
 [`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md) to run the echo experiments.
@@ -385,10 +385,10 @@ sudo reboot
 
 ### 5.2. Copy the runtime tuning script
 
-On the build machine, copy [`benchmarks/rt_tune.sh`](benchmarks/rt_tune.sh) to the GH200:
+On the build machine, copy [`config/rt_tune.sh`](config/rt_tune.sh) to the GH200:
 
 ```bash
-scp ~/backline/benchmarks/rt_tune.sh "$SERVER:~/rt_tune.sh"
+scp ~/backline/config/rt_tune.sh "$SERVER:~/rt_tune.sh"
 ```
 
 ### 5.3. After every GH200 boot
