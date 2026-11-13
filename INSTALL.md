@@ -390,7 +390,7 @@ Tier 4 requires three machines: this one, the server from tier 3, and the VPK120
 controller moves to the board, so the round trip crosses the fabric between the board and the host.
 
 These run the controller on a VPK120 board, which posts the syndrome and detects the reply in
-hardware. This assumes your VPK120 board is installed with the correct image and in a correct state.
+hardware. This assumes your VPK120 board is installed with the ERNIC image and in a correct state.
 See https://github.com/PennylaneAI/backline-vpk120/tree/v0.1.0 for more information on setting the FPGA up.
 The board can also utilize NVIDIA's Holoscan Sensor Bridge or ETH Zurich's BALBOA instead. To boot
 the board from one of those images, follow [`docs/bitstreams.md`](docs/bitstreams.md).
