@@ -77,7 +77,12 @@ import pennylane as qp
 
 # --------------------------------------------- config ---------------------------------------------
 
-_MACHINES_TOML = Path(__file__).resolve().parent.parent / "config" / "machines.toml"
+_ROOT = Path(__file__).resolve().parent.parent
+
+# BACKLINE_MACHINES names another machines file relative to the repository root.
+_MACHINES_TOML = _ROOT / Path(
+    os.environ.get("BACKLINE_MACHINES") or "config/machines.toml"
+).expanduser()
 
 if not _MACHINES_TOML.is_file():
     raise SystemExit(
@@ -99,7 +104,7 @@ LOCAL_OOB_PORT = _PORTS["local_oob"]
 
 _CATALYST = Path(os.environ.get("CATALYST_ROOT") or _CONFIG["paths"]["catalyst"]).expanduser()
 
-_BUNDLES = _MACHINES_TOML.parent.parent / Path(
+_BUNDLES = _ROOT / Path(
     os.environ.get("BACKLINE_BUNDLES") or _CONFIG["paths"]["bundles"]
 ).expanduser()
 _LIB = _CATALYST / "runtime/build/lib"
@@ -125,7 +130,15 @@ _LOCAL_ENDPOINT = qp.Endpoint(_CONFIG["local"]["fabric"], LOCAL_OOB_PORT)
 _SERVER_CFG = _CONFIG["server"]["config"]
 _SERVER_ENDPOINT = qp.Endpoint(_CONFIG["server"]["fabric"], OOB_PORT)
 
-_VPK_CFG = _CONFIG["vpk"]["config"]
+# The bitstream the board carries decides its controller's backend, and how a coprocessor is
+# reached by that controller.
+_BOARD = _CONFIG["vpk"][_CONFIG["vpk"]["bitstream"]]
+_VPK_CFG = _BOARD["config"]
+# The server's own link unless the bitstream's table names another.
+_VPK_COPROC_CFG = _BOARD.get("coproc_config", _SERVER_CFG)
+_VPK_COPROC_ENDPOINT = qp.Endpoint(
+    _BOARD.get("coproc_endpoint", _CONFIG["server"]["fabric"]), OOB_PORT
+)
 
 # ------------------------------------------- libraries --------------------------------------------
 # A remote node identifies a library by filename, the bundle having been deployed alongside the
@@ -170,7 +183,7 @@ REMOTE_CPU_CTRL = dict(
     remote=True,
     executor_options=_CPU_CTRL_EXECUTOR,
     init_args={"config": _SERVER_CFG})
-"""The controller on the x86_64 server, over cpu_verbs."""
+"""The controller on the server's CPU, over cpu_verbs."""
 
 REMOTE_GPU_COPROC = dict(
     remote=True,
@@ -184,6 +197,15 @@ REMOTE_VPK_CTRL = dict(
     remote=True,
     executor_options=_executor("vpk", _PORTS["vpk"]),
     hardware="fpga",
+    backend=_BOARD["backend"],
     init_args={"config": _VPK_CFG})
-"""The controller on the VPK120 board. The hwhs engine posts the syndrome and detects the reply in
+"""The controller on the VPK120 board. Its engine posts the syndrome and detects the reply in
 hardware, so no CPU is in the round trip."""
+
+REMOTE_VPK_GPU_COPROC = dict(
+    remote=True,
+    endpoint=_VPK_COPROC_ENDPOINT,
+    executor_options=_executor("server", _PORTS["gpu_coproc"]),
+    hardware="gpu",
+    init_args={"config": f"{_VPK_COPROC_CFG};gpu=0"})
+"""REMOTE_GPU_COPROC as the board's controller reaches it."""

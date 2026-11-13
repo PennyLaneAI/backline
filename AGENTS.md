@@ -8,8 +8,8 @@ Accompanying material for a manuscript, and the machinery to reproduce its measu
 QEC decode offloaded from a controller to a coprocessor over an RDMA fabric.
 
 **Every artifact that ships targets Linux.** The controller is a Xilinx VPK120 (aarch64,
-PetaLinux); the coprocessor is an x86-64 host with an AMD GPU. Nothing deployed is meant to
-run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
+PetaLinux); the coprocessor is an x86-64 host with an AMD GPU, or a GH200 (aarch64, NVIDIA GPU).
+Nothing deployed is meant to run on the machine you build on — macOS support exists only so a laptop can *drive* the build.
 
 The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
 images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
@@ -76,8 +76,9 @@ Each of these was met in practice, and each fails in a way that points somewhere
 * **Verification refuses to run rather than passing silently.** On macOS the only `readelf`
   is Homebrew's keg-only llvm: `export PATH="$(brew --prefix llvm)/bin:$PATH"`.
 * **The FPGA device sources live in Catalyst, not here.** They moved to
-  `runtime/lib/transport/rdma/{fpga_verbs,fpga_hwhs,vendor}/`, so the `hwhs-*` and `swhs-*`
-  components declare `CATALYST` and nothing else. Do not re-add a `devices/` tree.
+  `runtime/lib/transport/rdma/{fpga_verbs,fpga_hwhs,fpga_hsb,fpga_balboa,vendor}/`, so the
+  `hwhs-*`, `swhs-*`, `hsb-hwhs-*` and `balboa-hwhs-*` components declare `CATALYST` and nothing
+  else. Do not re-add a `devices/` tree.
 
   `rdma/vendor/infiniband/` there is a PATCHED copy of the system verbs headers. The single
   difference is one extra member, `void *(*_compat_reg_mr_ex)(void)`, in
@@ -96,6 +97,17 @@ Each of these was met in practice, and each fails in a way that points somewhere
   header comments cite `rdma_dev/…/Makefile` as the origin; that tree is frozen and is **not
   in or beside this repository**, so those citations are provenance, not somewhere to look.
   The descriptions here are the only copy.
+* **`gpu-coprocessor` is compiled on the server.** hipcc does not cross-compile, so a target
+  whose description sets `TARGET_BUILD_HOST` builds that component on that machine:
+  `config/xbuild/tools/build-on-host.sh` copies this tree and the component's sources to
+  `~/.cache/xbuild/<target>` there over ssh, runs the same recipe, and copies the library back.
+  `TARGET_GPU_SDK` names the HIP install it compiles with. Without `TARGET_BUILD_HOST`, building
+  it for another architecture stops with an error that says so. The `rhino` target builds its
+  GPU backend this way.
+* **The demos and the benchmarks read one machines file.** It is `config/machines.toml`, the
+  manuscript's machines, unless `BACKLINE_MACHINES` names another, such as
+  `config/machines.rhino.toml`. A relative path is resolved
+  against the repository root.
 
 ## Before you say a change works
 

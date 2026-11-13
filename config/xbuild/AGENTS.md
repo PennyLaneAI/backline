@@ -120,6 +120,7 @@ the output instead of reasoning about it in prose.
 | `mk/rules.mk` | one recipe per `COMPONENT_KIND`. Three kinds, three recipes | recipe count must stay O(kinds), never O(components × targets) |
 | `mk/component.mk` | one sub-make process per component, for variable isolation | sharing a process leaks one component's flags into the next |
 | native builds | a target whose sysroot is the host's own — `/`, or the SDK on macOS, discovered by the `native` provider. Same recipes, same verifier, same bundler | a second code path means two sets of bugs |
+| `tools/build-on-host.sh` | **the only** way a `COMPONENT_REQUIRES_NATIVE=yes` component is built for another architecture. It runs the same `mk/component.mk` recipe on `TARGET_BUILD_HOST`, with `TARGET_BUILD_HOST` cleared there, and copies the artifact back, where this host's verifier and bundler check it as usual. `TARGET_GPU_SDK` picks the vendor compiler | a second remote path would skip the verifier, or compile with flags `mk/derive.mk` never composed |
 
 ---
 

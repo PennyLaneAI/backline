@@ -6,6 +6,10 @@
 # dictionaries, so pointing the stack at different hardware is an edit here alone. Each of those
 # modules then adds the nodes only it uses.
 #
+# This file holds the manuscript's machines: the threadripper as the server, and the board with the
+# ERNIC image. machines.rhino.toml holds rhino, a GH200; BACKLINE_MACHINES names the file to read
+# instead of this one.
+#
 # Every [<machine>.executor] table becomes that node's executor_options, taking `port` from [ports]
 # and resolving each `deploy` entry against the bundle root. A machine naming no `user` is reached
 # as the current login account. A `config` value is the transport backend's key=value;... string,
@@ -59,12 +63,45 @@ executor_bin = "numactl -N 0 -m 0 ./catalyst-executor"
 LD_LIBRARY_PATH = ".:/opt/rocm/lib"
 
 # A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
-# executor requires /dev/mem and /dev/xib0.
+# executor runs as root to reach the engine's devices.
 [vpk]
-# The hwhs engine posts the syndrome and detects the reply itself, out of BRAM.
+# The bitstream the board carries now, one of the tables below. Everything that runs on the board,
+# or talks to it, follows this line.
+bitstream = "ernic"
+
+# One table per bitstream, each naming the controller's transport `backend` and its `config`, the
+# engine's core clock, and how a coprocessor on the server is reached by that controller: its
+# `coproc_config` and the `coproc_endpoint` it takes the handshake at. A table without them uses
+# the server's `config` and `fabric`.
+
+# AMD's ERNIC driven by the hwhs engine, which posts the syndrome and detects the reply itself, out
+# of BRAM. `config_swhs` is the same board with its queues in PL, for the CPU posting through
+# ibverbs and polling the reply.
+[vpk.ernic]
+backend = "hwhs"
 config = "dev=xib_0;gid=1;sq_mem=bram;data_mem=bram;reply_mem=bram;reply_poll=hw;stride_log2=6"
-# The same board with its queues in PL, for the CPU posting through ibverbs and polling the reply.
 config_swhs = "dev=xib_0;gid=1;sq_mem=pl;data_mem=pl;reply_mem=pl;stride_log2=6"
+clk_mhz = 200
+
+# NVIDIA's Holoscan Sensor Bridge driven by the hwhs-hsb engine. The coprocessor speaks HSB's wire
+# on the GID of HSB's 192.168.0.0/24 subnet, and takes the handshake on the management network,
+# since HSB owns the port and the A72 has no address on the fabric.
+[vpk.hsb]
+backend = "hsb_hwhs"
+config = "reply_to_us=1000000"
+clk_mhz = 250
+# gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on the server's port.
+coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=hsb"
+coproc_endpoint = "192.168.3.14"
+
+# ETH Zurich's BALBOA RoCE v2 stack driven by the hwhs-balboa engine. BALBOA takes HSB's address,
+# 192.168.0.2, so the coprocessor uses the same GID and handshake network.
+[vpk.balboa]
+backend = "balboa_hwhs"
+config = "reply_to_us=1000000"
+clk_mhz = 250
+coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=balboa"
+coproc_endpoint = "192.168.3.14"
 
 [vpk.executor]
 host = "192.168.3.15"

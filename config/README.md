@@ -5,15 +5,17 @@ System-specific settings and building.
 | | |
 |---|---|
 | [machines.toml](machines.toml) | the machines the demos and benchmarks run on, and the ports they are reached at |
+| [machines.rhino.toml](machines.rhino.toml) | the same, with rhino (a GH200) as the server |
 | [xbuild/](xbuild/) | the cross-build tree that produces the stacks remote nodes deploy |
 
 `machines.toml` holds one table per machine: the SSH host, the cross-compilation target, the bundle
 it deploys, the executor's environment, and the transport backend's `key=value;...` config string.
 `demos/placement.py` and `benchmarks/placement.py` both read it and assemble one dictionary per
-node, each adding the nodes only it uses. Two environment variables move the paths it names:
+node, each adding the nodes only it uses. These environment variables change what it reads:
 
 | | |
 |---|---|
+| `BACKLINE_MACHINES` | the machines file to read instead of `machines.toml`, such as `config/machines.rhino.toml`. A relative path resolves against the repository root |
 | `CATALYST_ROOT` | the local Catalyst build tree, default `~/catalyst` |
 | `BACKLINE_BUNDLES` | the cross-built bundles a remote node deploys, one subdirectory per machine. Defaults to `xbuild/build/bundles`, where `make bundle` publishes every bundle it builds |
 
