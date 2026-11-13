@@ -2,6 +2,8 @@
 
 Install once, then follow [`demos/README.md`](demos/README.md) to run the demos.
 
+For a GH200 (rhino), use [`INSTALL.GH200.md`](INSTALL.GH200.md) for installation and system tuning.
+
 The demos come in four tiers. Each adds hardware to the one before it, so install down to the
 tier you have and stop there.
 
@@ -373,16 +375,12 @@ and copies the library back ([troubleshooting](config/xbuild/docs/05-troubleshoo
 `BACKLINE_BUNDLES` is one directory holding one entry per bundle name. A relative path is
 resolved against the repository root.
 
-### Reproduce on a GH200
+### GH200 (rhino)
 
-The steps above use the manuscript's server. For a GH200 (aarch64, NVIDIA H100), follow
-[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md): it sets up HIP for NVIDIA and
-builds the GPU backend on the GH200. Its machines file is `config/machines.rhino.toml`, which
-`BACKLINE_MACHINES` points the demos and the benchmarks at:
-
-```bash
-export BACKLINE_MACHINES=config/machines.rhino.toml
-```
+For a GH200 (aarch64, NVIDIA H100), follow [`INSTALL.GH200.md`](INSTALL.GH200.md). It covers
+Rhino's CUDA/HIP setup, building the GPU backend on the GH200, both target bundles, system
+tuning, and the runtime environment. Then use
+[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md) to reproduce the echo experiments.
 
 ## Tier 4 — FPGA demos (4, 5)
 
