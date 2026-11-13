@@ -499,7 +499,7 @@ and reboot.
 
 ### 6.3. Select and check the board image
 
-Check the board using [`INSTALL_FPGA.md`](INSTALL_FPGA.md#checks), and set
+Check the board using [`INSTALL_FPGA.md`](INSTALL_FPGA.md#2-check-the-image), and set
 `[vpk] bitstream` in `config/machines.rhino.toml` to the installed image: `"hsb"`, `"balboa"`,
 or `"ernic"`. Reapply the ERNIC ARP entry whenever that image is booted.
 
