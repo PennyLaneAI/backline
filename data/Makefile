@@ -4,6 +4,7 @@
 #   make main-text           only the main-text dataset
 #   make appendix            only the appendix dataset
 #   make 20261030            only data-runs/20261030
+#   make 20261105            only data-runs/20261105
 #   make list                what would be plotted, and with which plotter
 #   make clean               remove every figures/ directory
 #   make FLAGS='--logy'      override the plotting flags for this run
