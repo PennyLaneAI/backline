@@ -1,9 +1,8 @@
 # Reproducing the FPGA echo benchmarks on the GH200
 
-This guide reproduces the round-trip measurements for two FPGA network IPs on the VPK120: HSB
-(NVIDIA Holoscan Sensor Bridge) and ERNIC (AMD). The coprocessor is a GH200. For each IP you run
-four cells of 10^6 rounds: CPU echo and GPU echo, each in sw-loop and hw-loop. The same steps also
-run a third IP, BALBOA (ETH Zurich's RoCE v2 stack).
+This guide reproduces the round-trip measurements for three FPGA network IPs on the VPK120: HSB
+(NVIDIA Holoscan Sensor Bridge), ERNIC (AMD), BALBOA (ETH Zurich's Roce v2 stack). The coprocessor is a GH200. For each IP you run
+four cells of 10^6 rounds: CPU echo and GPU echo, each in sw-loop and hw-loop.
 
 ## Code
 
