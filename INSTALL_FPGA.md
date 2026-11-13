@@ -61,7 +61,7 @@ make boot                                       # with the board in JTAG mode
 `make hw` takes about an hour. The folder's README has the details and the options.
 
 The image configures the board's network at boot. Log in on the serial console as `root`
-(password `root`) or `petalinux` (password `2024`).
+(insert root password) or `petalinux` (input password).
 
 ## 2. Check the image
 
