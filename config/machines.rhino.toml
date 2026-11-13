@@ -61,8 +61,8 @@ deploy = ["rhino-bundle"]
 executor_bin = "./catalyst-executor"
 
 [server.executor.env]
-# "." is the deployed bundle; /opt/shared/rdma-core-v65 is a newer libmlx5
-# (benchmarks/reproduce-gh200.md).
+# "." is the deployed bundle; the other entry is rdma-core v65's libmlx5
+# (benchmarks/reproduce-gh200.md, step 1).
 LD_LIBRARY_PATH = ".:/opt/shared/rdma-core-v65/build/lib"
 CUDA_HOME = "/usr/local/cuda-12.4/"
 
