@@ -5,7 +5,7 @@ This guide reproduces the round-trip measurements for three FPGA network IPs on 
 four cells of 10^6 rounds: CPU echo and GPU echo, each in sw-loop and hw-loop.
 
 Install the software, build both bundles, and tune the machines using
-[`INSTALL.GH200.md`](../INSTALL.GH200.md). That guide specifies the source branches, GH200
+[`INSTALL_GH200.md`](../INSTALL_GH200.md). That guide specifies the source branches, GH200
 libraries, machine configuration, and environment needed here.
 
 ## Results to compare against
@@ -30,10 +30,10 @@ in [`data/data-runs/20261105/`](../data/data-runs/20261105/).
 
 ## 1. Prepare a session
 
-Follow [Session setup and checks](../INSTALL.GH200.md#6-session-setup-and-checks) to activate
+Follow [Session setup and checks](../INSTALL_GH200.md#6-session-setup-and-checks) to activate
 Catalyst's virtual environment, select `config/machines.rhino.toml` and the built bundles,
-and check the GH200 and board. Reapply the [boot-time tuning](../INSTALL.GH200.md#53-after-every-gh200-boot)
-after a GH200 reboot and the [ERNIC ARP entry](../INSTALL.GH200.md#54-after-every-ernic-board-boot)
+and check the GH200 and board. Reapply the [boot-time tuning](../INSTALL_GH200.md#53-after-every-gh200-boot)
+after a GH200 reboot and the [ERNIC ARP entry](../INSTALL_GH200.md#54-after-every-ernic-board-boot)
 after booting that board image.
 
 The board carries one image at a time. Follow [`docs/bitstreams.md`](../docs/bitstreams.md)
@@ -79,9 +79,9 @@ before comparing them with the table above.
 | The handshake never completes, and `ping 192.168.0.2` from the GH200 gets no reply | The link to the board is down |
 | The next run hangs, or picks a port other than 9811 | An executor is left from an earlier run: `pgrep -af catalyst-executor` on the GH200 and on the board, then kill it |
 | `bench.py` ends in a segmentation fault after the coprocessor fails | It leaves executors running on the GH200 and on the board. Kill them before the next run |
-| ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([ERNIC board setup](../INSTALL.GH200.md#54-after-every-ernic-board-boot)) |
+| ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([ERNIC board setup](../INSTALL_GH200.md#54-after-every-ernic-board-boot)) |
 | HSB: the handshake completes, then every round times out | The board carries the stock HSB image, which sends WRITE_WITH_IMM. Boot the `hsb_hwhs/` image ([bitstreams](../docs/bitstreams.md)) |
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
-| A result that does not match | Run the checks in [`INSTALL.FPGA.md`](../INSTALL.FPGA.md#2-check-the-image) 
-| GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL.GH200.md#44-bundles)) |
-| Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib`; check the [runtime configuration](../INSTALL.GH200.md#3-configure-the-build-and-runtime) |
+| A result that does not match | Run the checks in [`INSTALL.FPGA.md`](../INSTALL.FPGA.md#2-check-the-image) |
+| GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
+| Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib`; check the [runtime configuration](../INSTALL_GH200.md#3-configure-the-build-and-runtime) |

@@ -3,8 +3,10 @@
 Use this guide to prepare a GH200 coprocessor and VPK120 controller for
 [`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md). It is self-contained,
 including the source branches, CUDA/HIP versions, and latency tuning used for those experiments.
+We will use our set-up as an example, and this can be adapted to your own test set-up.
 
-For a generic backline installation, use [`INSTALL.md`](INSTALL.md) instead.
+For backline installation on x86 systems or to reproduce the original manuscript
+results, use [`INSTALL.md`](INSTALL.md) instead.
 
 After installation, follow
 [`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md) to run the echo experiments.
@@ -125,7 +127,7 @@ git clone --branch rniczh/support-hsb-and-balboa https://github.com/PennyLaneAI/
 
 ```bash
 C=$CATALYST_ROOT
-X=~/backline/config/xbuild
+XBUILD_DIR=~/backline/config/xbuild
 SERVER=you@192.168.3.12          # your GH200 SSH account and management address
 BOARD=petalinux@192.168.3.15    # your board's SSH account and management address
 ```
@@ -141,8 +143,9 @@ rdma-core and HIP there as your normal user, without `sudo`. The commands use CM
 
 ### 2.1. rdma-core v65
 
-Older libmlx5 builds, such as MLNX_OFED 24.07's, delay every 64th send by about 0.6 µs;
-v65's does not. The runtime configuration loads it from `/opt/shared/rdma-core-v65`.
+Older libmlx5 builds, such as MLNX_OFED 24.07's may cause performance issue (we observed
+a delay every 64th send by about 0.6 µs); v65's does not.
+The runtime configuration loads it from `/opt/shared/rdma-core-v65`.
 `IN_PLACE` compiles the build's own path into the libraries, so build it where it will stay:
 
 #### 2.1.1. Clone rdma-core
@@ -256,7 +259,7 @@ Its polling thread is pinned to isolated core 24 with `rt=0`; the board executor
 If the GH200 does not run the reference Ubuntu 22.04 environment, refresh its target facts:
 
 ```bash
-cd "$X"
+cd "$XBUILD_DIR"
 make probe TARGET=rhino SSH="$SERVER"
 ```
 
@@ -276,7 +279,7 @@ The board's sysroot comes from distribution packages; the GH200's is copied from
 #### 4.1.1. Obtain the VPK120 sysroot
 
 ```bash
-cd "$X"
+cd "$CATALYST_ROOT"
 make sysroot TARGET=vpk120
 ```
 
@@ -295,14 +298,14 @@ overwrite the board's:
 #### 4.2.1. Build LLVM for the VPK120
 
 ```bash
-cd "$X"
-make catalyst-llvm TARGET=vpk120 CATALYST="$C"
+cd "$CATALYST_ROOT"
+make catalyst-llvm TARGET=vpk120 CATALYST="$CATALYST_ROOT"
 ```
 
 #### 4.2.2. Build LLVM for the GH200
 
 ```bash
-make catalyst-llvm TARGET=rhino CATALYST="$C" LLVM_OUTDIR="$C/mlir/llvm-project/build-aarch64-rhino"
+make catalyst-llvm TARGET=rhino CATALYST="$CATALYST_ROOT" LLVM_OUTDIR="$C/mlir/llvm-project/build-aarch64-rhino"
 ```
 
 ### 4.3. Components
@@ -313,8 +316,8 @@ aarch64 LLVM. Name the components in each build:
 #### 4.3.1. Build the VPK120 components
 
 ```bash
-cd "$X"
-make build TARGET=vpk120 CATALYST="$C" COMPONENT="executor rt-capi rtd-null-qubit rt-transport \
+cd "$CATALYST_ROOT"
+make build TARGET=vpk120 CATALYST="$CATALYST_ROOT" COMPONENT="executor rt-capi rtd-null-qubit rt-transport \
     hwhs-capi-backend hwhs-controller-session swhs-capi-backend hsb-hwhs-capi-backend \
     balboa-hwhs-capi-backend"
 ```
@@ -322,14 +325,14 @@ make build TARGET=vpk120 CATALYST="$C" COMPONENT="executor rt-capi rtd-null-qubi
 #### 4.3.2. Build the GH200 runtime and backends
 
 ```bash
-make build TARGET=rhino CATALYST="$C" COMPONENT="rt-transport rt-capi rtd-null-qubit \
+make build TARGET=rhino CATALYST="$CATALYST_ROOT" COMPONENT="rt-transport rt-capi rtd-null-qubit \
     cpu-verbs-controller cpu-verbs-coprocessor echo-coprocessor-cpu steane-coprocessor-cpu gpu-coprocessor"
 ```
 
 #### 4.3.3. Build the GH200 executor
 
 ```bash
-make build TARGET=rhino CATALYST="$C" COMPONENT=executor \
+make build TARGET=rhino CATALYST="$CATALYST_ROOT" COMPONENT=executor \
     COMPONENT_CMAKE_ARGS="-DCATALYST_SRC=$C -DLLVM_DIR=$C/mlir/llvm-project/build-aarch64-rhino/lib/cmake/llvm"
 ```
 
@@ -341,9 +344,9 @@ GH200 over SSH with the HIP installation from step 2, then copies the library ba
 #### 4.4.1. Assemble both bundles
 
 ```bash
-cd "$X"
-make bundle TARGET=rhino BUNDLE=rhino-bundle CATALYST="$C"
-make bundle TARGET=vpk120 BUNDLE=vpk-bundle CATALYST="$C"
+cd "$CATALYST_ROOT"
+make bundle TARGET=rhino BUNDLE=rhino-bundle CATALYST="$CATALYST_ROOT"
+make bundle TARGET=vpk120 BUNDLE=vpk-bundle CATALYST="$CATALYST_ROOT"
 ```
 
 #### 4.4.2. Check the Rhino bundle and GPU backend
@@ -361,6 +364,8 @@ The machines file uses the published bundles under `config/xbuild/build/bundles`
 [`config/xbuild/README.md`](config/xbuild/README.md) documents the build system and verification.
 
 ## 5. System tuning
+
+This section is optional, and only include for reference on optimizations performed on our set-up.
 
 ### 5.1. Isolate the polling cores
 
@@ -499,4 +504,5 @@ Check the board using [`docs/bitstreams.md`](docs/bitstreams.md#checks), and set
 or `"ernic"`. Reapply the ERNIC ARP entry whenever that image is booted.
 
 The installation is ready for the commands in
-[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md).
+[`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md) to reproduce
+our measured benchmarking results.

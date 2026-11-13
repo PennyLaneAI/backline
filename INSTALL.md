@@ -1,12 +1,15 @@
 # Installation
 
-Use this guide for a generic backline installation, from a local CPU demo through a
-GPU server and VPK120 board. After installation, follow
+Use this guide for an x86 backline installation, from a local CPU demo through a
+GPU server and VPK120 board. You can also use this to reproduce the original
+manuscript results. After installation, follow
 [`demos/README.md`](demos/README.md) to run the demos.
 
-To reproduce [`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md), use
-[`INSTALL.GH200.md`](INSTALL.GH200.md) instead. That self-contained guide includes the
-source branches, software versions, and system tuning for the GH200 experiments.
+To test and reproduce benchmarking results for a [`grace-hopper
+system`](benchmarks/reproduce-gh200.md), use
+[`INSTALL_GH200.md`](INSTALL_GH200.md) instead. That self-contained guide
+includes the source branches, software versions, and system tuning for the GH200
+experiments.
 
 ## Machines and software
 
