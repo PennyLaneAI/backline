@@ -37,7 +37,7 @@ source /path/to/Vivado/2024.2/settings64.sh
 xsdb jtag-boot.tcl
 ```
 
-Log in on the serial console as `petalinux` (password `2024`) and set up the board's network as in
+Log in on the serial console as `petalinux` (and input the appropriate password) and set up the board's network as in
 [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.1.0), "Network Setup".
 
 ### 1.2. HSB and BALBOA
