@@ -80,7 +80,6 @@ before comparing them with the table above.
 | The next run hangs, or picks a port other than 9811 | An executor is left from an earlier run: `pgrep -af catalyst-executor` on the GH200 and on the board, then kill it |
 | `bench.py` ends in a segmentation fault after the coprocessor fails | It leaves executors running on the GH200 and on the board. Kill them before the next run |
 | ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([ERNIC board setup](../INSTALL_GH200.md#54-after-every-ernic-board-boot)) |
-| HSB: the handshake completes, then every round times out | The board carries the stock HSB image, which sends WRITE_WITH_IMM. Boot the `hsb_hwhs/` image ([bitstreams](../docs/bitstreams.md)) |
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
 | A result that does not match | Run the checks in [`INSTALL_FPGA.md`](../INSTALL_FPGA.md#2-check-the-image) |
 | GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
