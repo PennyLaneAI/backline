@@ -82,6 +82,6 @@ before comparing them with the table above.
 | ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([ERNIC board setup](../INSTALL_GH200.md#54-after-every-ernic-board-boot)) |
 | HSB: the handshake completes, then every round times out | The board carries the stock HSB image, which sends WRITE_WITH_IMM. Boot the `hsb_hwhs/` image ([bitstreams](../docs/bitstreams.md)) |
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
-| A result that does not match | Run the checks in [`INSTALL.FPGA.md`](../INSTALL.FPGA.md#2-check-the-image) |
+| A result that does not match | Run the checks in [`INSTALL_FPGA.md`](../INSTALL_FPGA.md#2-check-the-image) |
 | GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
 | Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib`; check the [runtime configuration](../INSTALL_GH200.md#3-configure-the-build-and-runtime) |
