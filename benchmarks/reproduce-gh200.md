@@ -46,7 +46,7 @@ and 192.168.0.1 (GID 5: `::ffff:192.168.0.1, RoCE v2`) for HSB and BALBOA.
 
 ## Bitstreams
 
-The board carries one image at a time. [`docs/bitstreams.md`](../docs/bitstreams.md) covers
+The board carries one image at a time. [`INSTALL.FPGA.md`](../INSTALL.FPGA.md) covers
 booting the board from each image and checking it.
 
 ## 1. Set up the GH200
@@ -247,7 +247,7 @@ redo "After every boot" in [step 1](#1-set-up-the-gh200).
 | `cat /sys/class/net/enp1s0f1np1/device/iommu_group/type` | `identity` |
 | `pgrep -af catalyst-executor` | nothing |
 
-Then check the board with the [checks](../docs/bitstreams.md#checks) for its image. With the ERNIC
+Then check the board with the [checks](../INSTALL.FPGA.md#2-check-the-image) for its image. With the ERNIC
 image, the board also needs a permanent ARP entry for the GH200 after every boot. On the board, with
 the MAC address of `enp1s0f1np1`:
 
@@ -303,6 +303,6 @@ the percentiles of `rtt_us` (sw-loop) or `ns` (hw-loop).
 | ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([step 4](#4-before-a-session)) |
 | HSB: the handshake completes, then every round times out | The board carries the stock HSB image, which sends WRITE_WITH_IMM. Boot the `hsb_hwhs/` image ([Bitstreams](#bitstreams)) |
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
-| A result that does not match | Run the checks in [`docs/bitstreams.md`](../docs/bitstreams.md#checks) |
+| A result that does not match | Run the checks in [`INSTALL.FPGA.md`](../INSTALL.FPGA.md#2-check-the-image) |
 | GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([step 3](#3-bundle)) |
 | Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib` |

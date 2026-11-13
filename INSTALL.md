@@ -393,7 +393,7 @@ These run the controller on a VPK120 board, which posts the syndrome and detects
 hardware. This assumes your VPK120 board is installed with the ERNIC image and in a correct state.
 See https://github.com/PennylaneAI/backline-vpk120/tree/v0.1.0 for more information on setting the FPGA up.
 The board can also utilize NVIDIA's Holoscan Sensor Bridge or ETH Zurich's BALBOA instead. To boot
-the board from one of those images, follow [`docs/bitstreams.md`](docs/bitstreams.md).
+the board from one of those images, follow [`INSTALL.FPGA.md`](INSTALL.FPGA.md).
 
 The board's sysroot comes from distribution packages:
 

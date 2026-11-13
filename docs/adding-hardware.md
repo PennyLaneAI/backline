@@ -41,7 +41,7 @@ The hardware repository also needs:
 - Its own control tool and echo coprocessor (HSB's are `hsbctl` and `hsb-echo`, BALBOA's
   `balboactl` and `balboa-echo`), so you can bring the board up without Catalyst.
 
-[`bitstreams.md`](bitstreams.md) shows how to boot and check the existing images.
+[`INSTALL.FPGA.md`](../INSTALL.FPGA.md) shows how to load and check the existing images.
 
 ### 2. The controller backend in Catalyst
 

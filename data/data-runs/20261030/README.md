@@ -19,8 +19,8 @@ make 20261030
 ## Reproducing the dataset
 
 From `benchmarks/`, with the default `config/machines.toml`, which describes the threadripper, once
-with `[vpk] bitstream = "hsb"` and once with `"ernic"`. HSB needs the plain-WRITE image (see
-[`docs/bitstreams.md`](../../../docs/bitstreams.md)).
+with `[vpk] bitstream = "hsb"` and once with `"ernic"`. To build the image for HSB please refer to
+[`INSTALL.FPGA.md`](../../../INSTALL.FPGA.md)).
 
 ```bash
 BOARD=petalinux@192.168.3.15
