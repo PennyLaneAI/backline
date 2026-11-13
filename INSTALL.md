@@ -130,10 +130,10 @@ Create and activate a virtual environment, then install the release wheels:
 ```bash
 python3 -m venv ~/backline-venv
 source ~/backline-venv/bin/activate
-pip install pennylane-catalyst==0.16.0b1 \
-    -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b1 \
-    -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b1 \
-    -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b1
+pip install pennylane-catalyst==0.16.0b2 \
+    -f https://github.com/PennyLaneAI/pennylane/releases/expanded_assets/v0.46.0b2 \
+    -f https://github.com/PennyLaneAI/pennylane-lightning/releases/expanded_assets/v0.46.0b2 \
+    -f https://github.com/PennyLaneAI/catalyst/releases/expanded_assets/v0.16.0b2
 ```
 
 Continue with the [backline checkout](#15-backline).
@@ -144,7 +144,7 @@ Clone Catalyst:
 
 ```bash
 export CATALYST_ROOT=~/catalyst          # your own path
-git clone --branch v0.16.0b1 --recurse-submodules --shallow-submodules \
+git clone --branch v0.16.0b2 --recurse-submodules --shallow-submodules \
     https://github.com/PennyLaneAI/catalyst.git "$CATALYST_ROOT"
 ```
 
@@ -198,7 +198,7 @@ Without it, those demos stop with
 ### 1.5. backline
 
 ```bash
-git clone --branch v0.1.0b1 https://github.com/PennyLaneAI/backline.git ~/backline
+git clone --branch v0.1.0b2 https://github.com/PennyLaneAI/backline.git ~/backline
 ```
 
 ### 1.6. Check the local installation (tier 1)
@@ -373,7 +373,7 @@ the board from one of those images, follow [`INSTALL_FPGA.md`](INSTALL_FPGA.md).
 Provision the board using
 [`backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.1.0).
 The board can also run NVIDIA's Holoscan Sensor Bridge or ETH Zurich's BALBOA; see
-[`docs/bitstreams.md`](docs/bitstreams.md) to boot and check those images.
+[`INSTALL_FPGA.md`](INSTALL_FPGA.md) to boot and check those images.
 
 The controller needs `/dev/mem` and a character device from an out-of-tree kernel module,
 both present on a provisioned board. Set the board's address and account in
