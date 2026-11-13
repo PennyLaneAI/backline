@@ -36,7 +36,7 @@ and check the GH200 and board. Reapply the [boot-time tuning](../INSTALL_GH200.m
 after a GH200 reboot and the [ERNIC ARP entry](../INSTALL_GH200.md#54-after-every-ernic-board-boot)
 after booting that board image.
 
-The board carries one image at a time. Follow [`docs/bitstreams.md`](../docs/bitstreams.md)
+The board carries one image at a time. Follow [`INSTALL_FPGA.md`](../INSTALL_FPGA.md)
 to boot and check it, then set `[vpk] bitstream` in `config/machines.rhino.toml` to the image:
 `"hsb"`, `"balboa"`, or `"ernic"`.
 

@@ -50,7 +50,7 @@ Use these source branches for the software and board images:
 | [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-balboa-hwhs-sw` |
 
 Board images and provisioning live in `backline-vpk120`.
-[`docs/bitstreams.md`](docs/bitstreams.md) covers booting and checking each image.
+[`INSTALL_FPGA.md`](INSTALL_FPGA.md) covers booting and checking each image.
 
 ## 1. Prepare the build machine
 
@@ -499,7 +499,7 @@ and reboot.
 
 ### 6.3. Select and check the board image
 
-Check the board using [`docs/bitstreams.md`](docs/bitstreams.md#checks), and set
+Check the board using [`INSTALL_FPGA.md`](INSTALL_FPGA.md#2-check-the-image), and set
 `[vpk] bitstream` in `config/machines.rhino.toml` to the installed image: `"hsb"`, `"balboa"`,
 or `"ernic"`. Reapply the ERNIC ARP entry whenever that image is booted.
 
