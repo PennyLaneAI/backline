@@ -14,9 +14,6 @@ Nothing deployed is meant to run on the machine you build on — macOS support e
 The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
 images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
 
-The VPK120 board setup is not here either. Its HDL patch, PetaLinux recipes and prebuilt board
-images live in [`PennyLaneAI/backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120).
-
 The one exception is deliberate and you will meet it first: `TARGET=example-native` builds
 for whatever host you are on, and on a Mac that is a Mach-O binary you run locally. It exists
 to prove the build machinery works before Catalyst, a sysroot or a board can be blamed, and
@@ -105,11 +102,11 @@ Each of these was met in practice, and each fails in a way that points somewhere
   `config/xbuild/tools/build-on-host.sh` copies this tree and the component's sources to
   `~/.cache/xbuild/<target>` there over ssh, runs the same recipe, and copies the library back.
   `TARGET_GPU_SDK` names the HIP install it compiles with. Without `TARGET_BUILD_HOST`, building
-  it for another architecture stops with an error that says so. The `rhino` and `dell` targets
-  build their GPU backend this way.
+  it for another architecture stops with an error that says so. The `rhino` target builds its
+  GPU backend this way.
 * **The demos and the benchmarks read one machines file.** It is `config/machines.toml`, the
   manuscript's machines, unless `BACKLINE_MACHINES` names another, such as
-  `config/machines.rhino.toml` or `config/machines.dell.toml`. A relative path is resolved
+  `config/machines.rhino.toml`. A relative path is resolved
   against the repository root.
 
 ## Before you say a change works
