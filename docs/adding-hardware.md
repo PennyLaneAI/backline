@@ -1,19 +1,23 @@
 # Adding hardware to Backline
 
 This covers two kinds of new hardware: a network IP on the FPGA, the way HSB and BALBOA joined
-ERNIC, and a new coprocessor host, the way the GH200 joined the threadripper. The FPGA steps name
-the files HSB touched, so you can copy from a working example.
+ERNIC, and a new coprocessor host, the way the GH200 joined the threadripper.
+
+[HSB](https://github.com/nvidia-holoscan/holoscan-sensor-bridge), NVIDIA's Holoscan Sensor Bridge,
+is open-source FPGA IP that sends sensor data to a host over Ethernet as RoCE v2 traffic.
+[BALBOA](https://github.com/fpgasystems/Coyote) is the open-source RoCE v2 stack in ETH Zurich's
+Coyote.
 
 ## What lives where
 
-| Piece | Repository | HSB's |
-|---|---|---|
-| The bitstream: the network IP and the engine in front of it | the hardware repository | [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) `hsb_hwhs/` |
-| The controller backend, on the board's A72 | catalyst, `runtime/lib/transport/rdma/fpga_<ip>/` | `fpga_hsb/` |
-| The wire the coprocessor speaks to it | catalyst, `common/interface/<Ip>Wire.hpp` and `rdma/common/<Ip>Link.*` | `HsbWire.hpp`, `HsbLink.*` |
-| Build recipes and bundles | this repository, `config/xbuild/` | `components/hsb-hwhs-capi-backend.conf` |
-| Machines and placement | this repository, `config/machines.toml` | `[vpk.hsb]` |
-| Measurements and how to reproduce them | this repository, `benchmarks/`, `data/` | [`benchmarks/reproduce-gh200.md`](../benchmarks/reproduce-gh200.md) |
+| Piece | Repository | HSB's | BALBOA's |
+|---|---|---|---|
+| The bitstream: the network IP and the engine in front of it | the hardware repository, [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `hsb_hwhs/` | `balboa_hwhs/` |
+| The controller backend, on the board's A72 | catalyst, `runtime/lib/transport/rdma/fpga_<ip>/` | `fpga_hsb/` | `fpga_balboa/` |
+| The wire the coprocessor speaks to it | catalyst, `common/interface/<Ip>Wire.hpp` and `rdma/common/<Ip>Link.*` | `HsbWire.hpp`, `HsbLink.*` | `BalboaWire.hpp`, `BalboaLink.*` |
+| Build recipes and bundles | this repository, `config/xbuild/` | `components/hsb-hwhs-capi-backend.conf` | `components/balboa-hwhs-capi-backend.conf` |
+| Machines and placement | this repository, `config/machines.toml` | `[vpk.hsb]` | `[vpk.balboa]` |
+| Measurements and how to reproduce them | this repository, `benchmarks/`, `data/` | [`benchmarks/reproduce-gh200.md`](../benchmarks/reproduce-gh200.md) | the same |
 
 ## A new network IP on the FPGA
 
@@ -33,8 +37,8 @@ The hardware repository also needs:
 
 - A handshake header with the HostInfo, FpgaInfo and Ready structs. Catalyst's wire header copies
   it byte for byte.
-- Its own control tool and echo coprocessor (HSB's are `hsbctl` and `hsb-echo`), so you can bring
-  the board up without Catalyst.
+- Its own control tool and echo coprocessor (HSB's are `hsbctl` and `hsb-echo`, BALBOA's
+  `balboactl` and `balboa-echo`), so you can bring the board up without Catalyst.
 
 [`bitstreams.md`](bitstreams.md) shows how to boot and check the existing images.
 
@@ -114,10 +118,6 @@ Go in this order and stop at the first failure:
 3. Run CPU and GPU echo, sw-loop and hw-loop, 10^6 rounds each, as in
    [`benchmarks/reproduce-gh200.md`, Run](../benchmarks/reproduce-gh200.md#5-run). Every run must
    end with `timeouts=0` and `compare_errors=0`.
-4. Run the same cells for an existing IP on the same host and day, so the host doesn't change
-   between the two.
-5. Put the CSVs in `data/data-runs/<YYYYMMDD>/` with a README, and write the steps up in a
-   reproduce guide like [`benchmarks/reproduce-gh200.md`](../benchmarks/reproduce-gh200.md).
 
 ## A new coprocessor host
 
