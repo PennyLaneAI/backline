@@ -373,7 +373,7 @@ the board from one of those images, follow [`INSTALL_FPGA.md`](INSTALL_FPGA.md).
 Provision the board using
 [`backline-vpk120`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.1.0).
 The board can also run NVIDIA's Holoscan Sensor Bridge or ETH Zurich's BALBOA; see
-[`docs/bitstreams.md`](docs/bitstreams.md) to boot and check those images.
+[`INSTALL_FPGA.md`](INSTALL_FPGA.md) to boot and check those images.
 
 The controller needs `/dev/mem` and a character device from an out-of-tree kernel module,
 both present on a provisioned board. Set the board's address and account in
