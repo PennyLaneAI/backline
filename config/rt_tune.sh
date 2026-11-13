@@ -99,4 +99,61 @@ echo "$HOUSE" > /sys/devices/virtual/workqueue/cpumask 2>/dev/null || true
 sysctl -w kernel.numa_balancing=0
 echo never > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
 
+# Machine-check polling off. CPU 0's interval applies to every CPU.
+MCE_IV=/sys/devices/system/machinecheck/machinecheck0/check_interval
+if [[ -f $MCE_IV ]]; then
+    echo 0 > "$MCE_IV" && echo "[rt_tune] machine-check polling off"
+fi
+
+# Kernel threads allowed on several CPUs, such as kcompactd, off the isolated cores.
+python3 - "$ISO" "$HOUSE" <<'PY'
+import os, sys
+def cpus(s):
+    out = set()
+    for part in s.strip().split(','):
+        if '-' in part:
+            a, b = map(int, part.split('-')); out.update(range(a, b + 1))
+        elif part:
+            out.add(int(part))
+    return out
+iso, house = cpus(sys.argv[1]), cpus(sys.argv[2])
+for pid in filter(str.isdigit, os.listdir('/proc')):
+    try:
+        ppid = int(open(f'/proc/{pid}/stat').read().rsplit(')', 1)[1].split()[1])
+        allowed = os.sched_getaffinity(int(pid))
+        comm = open(f'/proc/{pid}/comm').read().strip()
+    except OSError:
+        continue
+    if ppid != 2 or len(allowed) < 2 or not allowed & iso:  # kernel threads are kthreadd's children
+        continue
+    keep = (allowed - iso) or house
+    try:
+        os.sched_setaffinity(int(pid), keep)
+        print(f"  {comm} -> {','.join(map(str, sorted(keep)))}")
+    except OSError:
+        pass  # per-CPU and rescuer threads refuse a new affinity
+PY
+
+# Report IRQs still on an isolated CPU; the kernel manages some and does not let them move.
+python3 - "$ISO" <<'PY'
+import glob, sys
+iso = {int(c) for c in sys.argv[1].split(',') if c}
+names = {}
+for line in open('/proc/interrupts'):
+    f = line.split()
+    if f and f[0].rstrip(':').isdigit():
+        names[f[0].rstrip(':')] = f[-1]
+for path in sorted(glob.glob('/proc/irq/*/effective_affinity_list')):
+    irq = path.split('/')[3]
+    cpus = set()
+    for part in open(path).read().strip().split(','):
+        if '-' in part:
+            a, b = map(int, part.split('-')); cpus.update(range(a, b + 1))
+        elif part:
+            cpus.add(int(part))
+    if cpus & iso:
+        print(f"  [warn] IRQ {irq} ({names.get(irq, '?')}) fires on {sorted(cpus & iso)}")
+PY
+
+
 echo "[rt_tune] done. verify with: cyclictest -m -p99 -a${ISO%%,*} -t1 -n -D30"
