@@ -117,7 +117,7 @@ Go in this order and stop at the first failure:
    ```
 
 3. Run CPU and GPU echo, sw-loop and hw-loop, 10^6 rounds each, as in
-   [`benchmarks/reproduce-gh200.md`, Run](../benchmarks/reproduce-gh200.md#5-run). Every run must
+   [`benchmarks/reproduce-gh200.md`, Run](../benchmarks/reproduce-gh200.md#2-run). Every run must
    end with `timeouts=0` and `compare_errors=0`.
 
 ## A new coprocessor host

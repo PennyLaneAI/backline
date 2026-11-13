@@ -36,7 +36,7 @@ and check the GH200 and board. Reapply the [boot-time tuning](../INSTALL_GH200.m
 after a GH200 reboot and the [ERNIC ARP entry](../INSTALL_GH200.md#54-after-every-ernic-board-boot)
 after booting that board image.
 
-The board carries one image at a time. Follow [`docs/bitstreams.md`](../docs/bitstreams.md)
+The board carries one image at a time. Follow [`INSTALL_FPGA.md`](../INSTALL_FPGA.md)
 to boot and check it, then set `[vpk] bitstream` in `config/machines.rhino.toml` to the image:
 `"hsb"`, `"balboa"`, or `"ernic"`.
 
@@ -83,4 +83,4 @@ before comparing them with the table above.
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
 | A result that does not match | Run the checks in [`INSTALL_FPGA.md`](../INSTALL_FPGA.md#2-check-the-image) |
 | GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
-| Every 64th round about 0.6 µs slow | `LD_LIBRARY_PATH` does not reach `/opt/shared/rdma-core-v65/build/lib`; check the [runtime configuration](../INSTALL_GH200.md#3-configure-the-build-and-runtime) |
+| Every 64th round is slower than the others | The executor loads an older libmlx5. `LD_LIBRARY_PATH` does not reach the rdma-core v65 build; check the [runtime configuration](../INSTALL_GH200.md#3-configure-the-build-and-runtime) |
