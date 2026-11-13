@@ -5,9 +5,9 @@ controller drives. Set `[vpk] bitstream` in the machines file to the image on th
 
 | IP | Image source | Engine clock | `[vpk] bitstream` |
 |---|---|---|---|
-| ERNIC | backline-vpk120, `ernic_hwhs/` | 200 MHz | `"ernic"` |
-| HSB | backline-vpk120, `hsb_hwhs/` | 250 MHz | `"hsb"` |
-| BALBOA | backline-vpk120, `balboa_hwhs/` | 250 MHz | `"balboa"` |
+| ERNIC | [backline-vpk120 `v0.1.0`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.1.0) | 200 MHz | `"ernic"` |
+| HSB | [backline-vpk120 `hsb_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/rniczh/add-balboa-hwhs-sw/hsb_hwhs) | 250 MHz | `"hsb"` |
+| BALBOA | [backline-vpk120 `balboa_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/rniczh/add-balboa-hwhs-sw/balboa_hwhs) | 250 MHz | `"balboa"` |
 
 HSB and BALBOA both take 192.168.0.2, so the server's port needs a second address, 192.168.0.1,
 and the coprocessor uses that address's RoCE v2 GID. ERNIC uses the server's own fabric address.
