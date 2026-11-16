@@ -5,7 +5,7 @@ System-specific settings and building.
 | | |
 |---|---|
 | [machines.toml](machines.toml) | the machines the demos and benchmarks run on, and the ports they are reached at |
-| [machines.rhino.toml](machines.rhino.toml) | the same, with rhino (a GH200) as the server |
+| [machines.gh200.toml](machines.gh200.toml) | the same, with a GH200 as the server |
 | [xbuild/](xbuild/) | the cross-build tree that produces the stacks remote nodes deploy |
 
 `machines.toml` holds one table per machine: the SSH host, the cross-compilation target, the bundle
@@ -15,7 +15,7 @@ node, each adding the nodes only it uses. These environment variables change wha
 
 | | |
 |---|---|
-| `BACKLINE_MACHINES` | the machines file to read instead of `machines.toml`, such as `config/machines.rhino.toml`. A relative path resolves against the repository root |
+| `BACKLINE_MACHINES` | the machines file to read instead of `machines.toml`, such as `config/machines.gh200.toml`. A relative path resolves against the repository root |
 | `CATALYST_ROOT` | the local Catalyst build tree, default `~/catalyst` |
 | `BACKLINE_BUNDLES` | the cross-built bundles a remote node deploys, one subdirectory per machine. Defaults to `xbuild/build/bundles`, where `make bundle` publishes every bundle it builds |
 

@@ -1,4 +1,4 @@
-# rhino's machines file: machines.toml's tables with rhino, a GH200, as the server. Select it with
+# The GH200 machines file: machines.toml's tables with a GH200 as the server. Select it with
 # BACKLINE_MACHINES (benchmarks/reproduce-gh200.md).
 #
 # The machines the demos and the benchmarks run on, and the ports they are reached at.
@@ -43,19 +43,19 @@ gpu_coproc = 9813     # both: the coprocessor on the server's GPU
 config = "dev=rxe0;gid=1"
 fabric = "127.0.0.1"
 
-# An aarch64 server carrying an NVIDIA GPU and a fast NIC: rhino, a GH200 (Grace + H100) with a
-# ConnectX-7 (mlx5_1, enp1s0f1np1). Grace is one NUMA node; the kernel isolates cores 24-26.
+# An aarch64 server carrying an NVIDIA GPU and a fast NIC: a GH200 (Grace + H100) with a
+# ConnectX-7 (mlx5_1). Grace is one NUMA node; core 24 is one the kernel isolates.
 [server]
 config = "dev=mlx5_1;gid=3;cpu_pin=24;rt=0"
 fabric = "192.168.1.10"
 
 [server.executor]
-host = "192.168.3.12"
+host = "gh200.example"
 triple = "aarch64-unknown-linux-gnu"
-# rhino's sudo asks for a password, so the executor runs as the login user: rt=0 above, and the
-# coprocessor thread is only pinned. Core 24 is isolated and tickless, so it needs no RT priority.
+# The executor runs as the login user, without sudo: rt=0 above, and the coprocessor thread is
+# only pinned. Core 24 is isolated and tickless, so it needs no RT priority.
 sudo = false
-deploy = ["rhino-bundle"]
+deploy = ["gh200-bundle"]
 # A login session's affinity already leaves out the isolated cores, so the executor's own threads
 # stay off 24 and only the coprocessor's thread moves there (cpu_pin).
 executor_bin = "./catalyst-executor"
@@ -63,7 +63,7 @@ executor_bin = "./catalyst-executor"
 [server.executor.env]
 # "." is the deployed bundle; the other entry is rdma-core v65's libmlx5
 # (benchmarks/reproduce-gh200.md, step 1).
-LD_LIBRARY_PATH = ".:/opt/shared/rdma-core-v65/build/lib"
+LD_LIBRARY_PATH = ".:/path/that/stays/rdma-core-v65/build/lib"
 CUDA_HOME = "/usr/local/cuda-12.4/"
 
 # A Xilinx VPK120 board, aarch64. Its transport is a hardware engine rather than a driver, so the
@@ -94,9 +94,9 @@ clk_mhz = 200
 backend = "hsb_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
-# gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on enp1s0f1np1 beside 192.168.1.10.
+# gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on the port beside 192.168.1.10.
 coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=hsb"
-coproc_endpoint = "192.168.3.12"
+coproc_endpoint = "gh200.example"
 
 # ETH Zurich's BALBOA RoCE v2 stack driven by the hwhs-balboa engine. BALBOA takes HSB's address,
 # 192.168.0.2, so the coprocessor uses the same GID and handshake network.
@@ -105,7 +105,7 @@ backend = "balboa_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
 coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=balboa"
-coproc_endpoint = "192.168.3.12"
+coproc_endpoint = "gh200.example"
 
 [vpk.executor]
 host = "192.168.3.15"
