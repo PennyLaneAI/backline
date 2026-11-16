@@ -23,7 +23,7 @@ with `[vpk] bitstream = "hsb"` and once with `"ernic"`. To build the image for H
 [`INSTALL_FPGA.md`](../../../INSTALL_FPGA.md)).
 
 ```bash
-BOARD=petalinux@192.168.3.15
+BOARD=petalinux@vpk120.example
 for C in cpu-echo gpu-echo; do
   ./bench.py --ctrl hw-handshake-sw-loop --coproc "$C" --iters 1000000 \
     -o "<bitstream>.sw-for-loop.$C.csv"

@@ -25,7 +25,7 @@ benchmarks at the GH200 with `BACKLINE_MACHINES=config/machines.gh200.toml`. Fro
 per image, with `[vpk] bitstream` set to `"hsb"`, `"balboa"` and `"ernic"` in turn:
 
 ```bash
-BOARD=petalinux@192.168.3.15
+BOARD=petalinux@vpk120.example
 for C in cpu-echo gpu-echo; do
   ./bench.py --ctrl hw-handshake-sw-loop --coproc "$C" --iters 1000000 \
     -o "<bitstream>.sw-for-loop.$C.csv"

@@ -47,7 +47,8 @@ fabric = "127.0.0.1"
 # ConnectX-7 (mlx5_1). Grace is one NUMA node; core 24 is one the kernel isolates.
 [server]
 config = "dev=mlx5_1;gid=3;cpu_pin=24;rt=0"
-fabric = "192.168.1.10"
+# The GH200's address in the ERNIC image's subnet, $ERNIC_IP in INSTALL_GH200.md.
+fabric = "gh200-ernic.example"
 
 [server.executor]
 host = "gh200.example"
@@ -94,7 +95,7 @@ clk_mhz = 200
 backend = "hsb_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
-# gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on the port beside 192.168.1.10.
+# gid 5 is the RoCE v2 entry of the port's second address, the one in HSB's subnet.
 coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=hsb"
 coproc_endpoint = "gh200.example"
 
@@ -108,7 +109,7 @@ coproc_config = "dev=mlx5_1;gid=5;cpu_pin=24;rt=0;peer=balboa"
 coproc_endpoint = "gh200.example"
 
 [vpk.executor]
-host = "192.168.3.15"
+host = "vpk120.example"
 user = "petalinux"
 triple = "aarch64-unknown-linux-gnu"
 sudo = true

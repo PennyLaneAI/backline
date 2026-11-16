@@ -20,13 +20,15 @@ Before each session, repeat [Session setup and checks](#6-session-setup-and-chec
 | GH200 | Runs the CPU or GPU coprocessor; compiles the GPU backend locally | CUDA, HIP, RDMA libraries, CMake, make, Git, C/C++ development tools, Python 3, rsync, and sudo for system tuning |
 | VPK120 board | Runs the FPGA controller | Provisioned board, SSH access as `petalinux`, and sudo for its executor |
 
-The board's 100G port connects to the GH200's ConnectX-7 port (`mlx5_1`).
-That port carries two addresses:
+The board's 100G port connects to the GH200's ConnectX-7 port (`mlx5_1`). That port carries two
+addresses, one in each image's subnet. The image fixes the board's address; pick any free address
+in the same /24 for the GH200 (HSB also uses .3 and .254). The commands below call the GH200's
+addresses `$ERNIC_IP` and `$HSB_IP`:
 
-| FPGA image | GH200 fabric address | RoCE v2 GID |
-|---|---|---|
-| ERNIC | `192.168.1.10/24` | 3: `::ffff:192.168.1.10` |
-| HSB or BALBOA | `192.168.0.1/24` | 5: `::ffff:192.168.0.1` |
+| FPGA image | Board address, fixed by the image | GH200 address | RoCE v2 GID |
+|---|---|---|---|
+| ERNIC | `192.168.1.1` | `$ERNIC_IP` | 3 |
+| HSB or BALBOA | `192.168.0.2` | `$HSB_IP` | 5 |
 
 Start with the GH200's OS, NVIDIA driver, CUDA toolkit, and OFED provisioned. The reference
 GH200 installation uses:
@@ -129,12 +131,11 @@ git clone --branch v0.1.0b2 https://github.com/PennyLaneAI/backline.git ~/backli
 C=$CATALYST_ROOT
 XBUILD_DIR=~/backline/config/xbuild
 SERVER=you@gh200.example        # your GH200 SSH account and management address
-BOARD=petalinux@192.168.3.15    # your board's SSH account and management address
+BOARD=petalinux@vpk120.example  # your board's SSH account and management address
 ```
 
-The GH200 address is a placeholder, and the board address is the one its image sets. Use your
-own account and addresses, and put the same values in the configuration files in
-[step 3](#3-configure-the-build-and-runtime).
+Both addresses are placeholders. Use your own account and addresses, and put the same values in
+the configuration files in [step 3](#3-configure-the-build-and-runtime).
 
 ## 2. Install the GH200 libraries
 
@@ -241,8 +242,8 @@ The leading `.` is the deployed bundle.
 
 #### 3.2.3. Set the RDMA device, GIDs, and polling core
 
-`[server] config` uses `dev=mlx5_1;gid=3;cpu_pin=24;rt=0`, and `[server] fabric` is
-`192.168.1.10`. HSB and BALBOA use GID 5 in their `coproc_config` entries.
+`[server] config` uses `dev=mlx5_1;gid=3;cpu_pin=24;rt=0`, and `[server] fabric` is your
+`$ERNIC_IP`. HSB and BALBOA use GID 5 in their `coproc_config` entries.
 Update the device, GIDs, polling core, and fabric address together if your wiring differs.
 
 #### 3.2.4. Set the executor privileges
@@ -403,10 +404,12 @@ It must be the only device in its IOMMU group.
 
 #### 5.3.1. Inspect the IOMMU group
 
-Inspect the group before unbinding:
+Set the port and your two fabric addresses, then inspect the group before unbinding:
 
 ```bash
-NIC=enp1s0f1np1
+NIC=$(ls /sys/class/infiniband/mlx5_1/device/net)   # the port to the board
+ERNIC_IP="<GH200 address for ERNIC>"
+HSB_IP="<GH200 address for HSB and BALBOA>"
 PCI=$(basename "$(readlink /sys/class/net/$NIC/device)")
 GRP=$(basename "$(readlink /sys/class/net/$NIC/device/iommu_group)")
 ls /sys/kernel/iommu_groups/$GRP/devices
@@ -415,15 +418,15 @@ ls /sys/kernel/iommu_groups/$GRP/devices
 #### 5.3.2. Rebind the NIC and restore its fabric addresses
 
 If the group contains only that PCI device, rebind it, restore its addresses, and apply the
-runtime tuning. Add `192.168.1.10` first so it gets GID 3, then `192.168.0.1` for GID 5:
+runtime tuning. Add `$ERNIC_IP` first so it gets GID 3, then `$HSB_IP` for GID 5:
 
 ```bash
 echo $PCI     | sudo tee /sys/bus/pci/drivers/mlx5_core/unbind
 echo identity | sudo tee /sys/kernel/iommu_groups/$GRP/type
 echo $PCI     | sudo tee /sys/bus/pci/drivers/mlx5_core/bind
 sudo ip link set $NIC mtu 4200 up
-sudo ip addr add 192.168.1.10/24 dev $NIC
-sudo ip addr add 192.168.0.1/24 dev $NIC
+sudo ip addr add "$ERNIC_IP/24" dev $NIC
+sudo ip addr add "$HSB_IP/24" dev $NIC
 ```
 
 #### 5.3.3. Apply runtime tuning
@@ -449,15 +452,16 @@ With the ERNIC image, the board needs a permanent ARP entry for the GH200.
 Run on the GH200:
 
 ```bash
-cat /sys/class/net/enp1s0f1np1/address
+cat /sys/class/net/$NIC/address
 ```
 
 #### 5.4.2. Install the permanent ARP entry
 
-Run this **on the board**, replacing `<MAC>` with that address:
+Run this **on the board**, replacing `<ERNIC_IP>` with the GH200's ERNIC address and `<MAC>` with
+that MAC address:
 
 ```bash
-sudo ip neigh replace 192.168.1.10 lladdr "<MAC>" dev eth0 nud permanent
+sudo ip neigh replace "<ERNIC_IP>" lladdr "<MAC>" dev eth0 nud permanent
 ```
 
 ## 6. Session setup and checks
@@ -479,15 +483,16 @@ export BACKLINE_BUNDLES=~/backline/config/xbuild/build/bundles
 
 ### 6.2. Check the running machines
 
-On the GH200, check the following before running experiments:
+On the GH200, with `NIC`, `ERNIC_IP` and `HSB_IP` set as in
+[step 5.3.1](#531-inspect-the-iommu-group), check the following before running experiments:
 
 | Check | Expect |
 |---|---|
-| `ip -br link show enp1s0f1np1` | `UP` |
-| `ip -br addr show enp1s0f1np1` | `192.168.1.10/24 192.168.0.1/24` |
+| `ip -br link show $NIC` | `UP` |
+| `ip -br addr show $NIC` | `$ERNIC_IP/24 $HSB_IP/24` |
 | `cat /sys/devices/system/cpu/isolated` | `24-26` |
 | `cat /sys/devices/system/cpu/nohz_full` | `24-26` |
-| `cat /sys/class/net/enp1s0f1np1/device/iommu_group/type` | `identity` |
+| `cat /sys/class/net/$NIC/device/iommu_group/type` | `identity` |
 | `sysctl kernel.sched_rt_runtime_us kernel.numa_balancing` | `-1` and `0`, respectively |
 | `cat /sys/kernel/mm/transparent_hugepage/enabled` | `[never]` selected |
 | `pgrep -af catalyst-executor` | No executors left from your previous runs |

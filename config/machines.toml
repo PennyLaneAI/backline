@@ -90,7 +90,7 @@ clk_mhz = 200
 backend = "hsb_hwhs"
 config = "reply_to_us=1000000"
 clk_mhz = 250
-# gid 5 is the RoCE v2 entry of 192.168.0.1, a second address on the server's port.
+# gid 5 is the RoCE v2 entry of the server port's second address, the one in HSB's subnet.
 coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=hsb"
 coproc_endpoint = "server.example"
 
@@ -104,7 +104,7 @@ coproc_config = "dev=mlx5_1;gid=5;cpu_pin=4;rt=1;peer=balboa"
 coproc_endpoint = "server.example"
 
 [vpk.executor]
-host = "192.168.3.15"
+host = "vpk120.example"
 user = "petalinux"
 triple = "aarch64-unknown-linux-gnu"
 sudo = true

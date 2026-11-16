@@ -15,8 +15,9 @@ drives.
 
 Set `[vpk] bitstream` in the machines file to the image on the board.
 
-HSB and BALBOA both take 192.168.0.2, so the server's port needs a second address, 192.168.0.1,
-and the coprocessor uses that address's RoCE v2 GID. ERNIC uses the server's own fabric address.
+HSB and BALBOA both take 192.168.0.2, so the server's port needs a second address in
+192.168.0.0/24, and the coprocessor uses that address's RoCE v2 GID. ERNIC uses the server's own
+fabric address.
 
 ## 1. Load the image
 
