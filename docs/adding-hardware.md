@@ -132,7 +132,7 @@ hipcc over nvcc on NVIDIA. `benchmarks/reproduce-gh200.md` shows the NVIDIA case
 ### 2. Placement
 
 Copy `config/machines.toml` to `config/machines.<host>.toml`, as
-[`config/machines.rhino.toml`](../config/machines.rhino.toml) does for rhino, and fill in its
+[`config/machines.gh200.toml`](../config/machines.gh200.toml) does for a GH200, and fill in its
 `[server]` tables: the backend `config` (`dev`, `gid`, `cpu_pin`, `rt`), `fabric`, and
 `[server.executor]` with `host`, `triple`, `sudo`, `deploy`, `executor_bin` and `env`. If a
 `[vpk.*]` table reaches the host over a different link than `[server]`, it sets its own

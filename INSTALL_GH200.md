@@ -1,4 +1,4 @@
-# Installation and system tuning for GH200 (rhino)
+# Installation and system tuning for GH200
 
 Use this guide to prepare a GH200 coprocessor and VPK120 controller for
 [`benchmarks/reproduce-gh200.md`](benchmarks/reproduce-gh200.md). It is self-contained,
@@ -17,19 +17,21 @@ Before each session, repeat [Session setup and checks](#6-session-setup-and-chec
 | Machine | Role | Requirements |
 |---|---|---|
 | Build machine (laptop or Linux host) | Builds Catalyst and cross-compiles the Linux bundles; drives the experiments | Build tools below and SSH access to both remote machines |
-| GH200 (`rhino`) | Runs the CPU or GPU coprocessor; compiles the GPU backend locally | CUDA, HIP, RDMA libraries, CMake, make, Git, C/C++ development tools, Python 3, rsync, and sudo for system tuning |
+| GH200 | Runs the CPU or GPU coprocessor; compiles the GPU backend locally | CUDA, HIP, RDMA libraries, CMake, make, Git, C/C++ development tools, Python 3, rsync, and sudo for system tuning |
 | VPK120 board | Runs the FPGA controller | Provisioned board, SSH access as `petalinux`, and sudo for its executor |
 
-The board's 100G port connects to Rhino's ConnectX-7 port `enp1s0f1np1` (`mlx5_1`).
-That port carries two addresses:
+The board's 100G port connects to the GH200's ConnectX-7 port (`mlx5_1`). That port carries two
+addresses, one in each image's subnet. The image fixes the board's address; pick any free address
+in the same /24 for the GH200 (HSB also uses .3 and .254). The commands below call the GH200's
+addresses `$ERNIC_IP` and `$HSB_IP`:
 
-| FPGA image | Rhino fabric address | RoCE v2 GID |
-|---|---|---|
-| ERNIC | `192.168.1.10/24` | 3: `::ffff:192.168.1.10` |
-| HSB or BALBOA | `192.168.0.1/24` | 5: `::ffff:192.168.0.1` |
+| FPGA image | Board address, fixed by the image | GH200 address | RoCE v2 GID |
+|---|---|---|---|
+| ERNIC | `192.168.1.1` | `$ERNIC_IP` | 3 |
+| HSB or BALBOA | `192.168.0.2` | `$HSB_IP` | 5 |
 
 Start with the GH200's OS, NVIDIA driver, CUDA toolkit, and OFED provisioned. The reference
-Rhino installation uses:
+GH200 installation uses:
 
 | Software | Reference version |
 |---|---|
@@ -128,13 +130,12 @@ git clone --branch v0.1.0b2 https://github.com/PennyLaneAI/backline.git ~/backli
 ```bash
 C=$CATALYST_ROOT
 XBUILD_DIR=~/backline/config/xbuild
-SERVER=you@192.168.3.12          # your GH200 SSH account and management address
-BOARD=petalinux@192.168.3.15    # your board's SSH account and management address
+SERVER=you@gh200.example        # your GH200 SSH account and management address
+BOARD=petalinux@vpk120.example  # your board's SSH account and management address
 ```
 
-The addresses shown are the reference machines' management addresses. Use your own account
-and addresses, and put the same values in the configuration files in
-[step 3](#3-configure-the-build-and-runtime).
+Both addresses are placeholders. Use your own account and addresses, and put the same values in
+the configuration files in [step 3](#3-configure-the-build-and-runtime).
 
 ## 2. Install the GH200 libraries
 
@@ -162,12 +163,12 @@ cmake -G "Unix Makefiles" -DIN_PLACE=1 -DNO_MAN_PAGES=1 -DNO_PYVERBS=1 -DENABLE_
 
 ### 2.2. CUDA and HIP for NVIDIA
 
-Rhino uses CUDA 12.4 at `/usr/local/cuda-12.4/`. xbuild compiles the GPU backend on the GH200
-with the hipcc that `TARGET_GPU_SDK` in `config/xbuild/targets/rhino.conf` points to. If the GH200
+The reference GH200 uses CUDA 12.4 at `/usr/local/cuda-12.4/`. xbuild compiles the GPU backend on the GH200
+with the hipcc that `TARGET_GPU_SDK` in `config/xbuild/targets/gh200.conf` points to. If the GH200
 has no HIP for NVIDIA, install it below and set `TARGET_GPU_SDK` to `$OPT/hip-nv/hip-install`.
 
-These commands use the `rocm-7.0.2` tags for compatibility with Rhino's CUDA 12.4. ROCm 7.1
-needs CUDA 12.8, which is not installed on Rhino. If your CUDA version differs, use a compatible
+These commands use the `rocm-7.0.2` tags for compatibility with CUDA 12.4. ROCm 7.1
+needs CUDA 12.8. If your CUDA version differs, use a compatible
 HIP release and update the paths in [step 3](#3-configure-the-build-and-runtime).
 
 #### 2.2.1. Fetch the HIP sources
@@ -218,20 +219,20 @@ Edit these files in the backline checkout **on the build machine**:
 
 | File | Settings |
 |---|---|
-| [`config/xbuild/targets/rhino.conf`](config/xbuild/targets/rhino.conf) | Set `TARGET_BUILD_HOST` and `host=` in `SYSROOT_PROVIDER_ARGS` to the GH200 SSH destination. `TARGET_GPU_ARCH=sm_90` selects its GPU; Set `TARGET_GPU_SDK` to your HIP installation, `$OPT/hip-nv/hip-install` from [step 2.2](#22-cuda-and-hip-for-nvidia). |
-| [`config/machines.rhino.toml`](config/machines.rhino.toml) | Set `[server.executor] host` and both `[vpk.hsb] coproc_endpoint` and `[vpk.balboa] coproc_endpoint` to the GH200 management address. Set `[vpk.executor] host` to the board. |
+| [`config/xbuild/targets/gh200.conf`](config/xbuild/targets/gh200.conf) | Set `TARGET_BUILD_HOST` and `host=` in `SYSROOT_PROVIDER_ARGS` to the GH200 SSH destination. `TARGET_GPU_ARCH=sm_90` selects its GPU; Set `TARGET_GPU_SDK` to your HIP installation, `$OPT/hip-nv/hip-install` from [step 2.2](#22-cuda-and-hip-for-nvidia). |
+| [`config/machines.gh200.toml`](config/machines.gh200.toml) | Set `[server.executor] host` and both `[vpk.hsb] coproc_endpoint` and `[vpk.balboa] coproc_endpoint` to the GH200 management address. Set `[vpk.executor] host` to the board. |
 
 The GH200 SSH user defaults to your build-machine login. If it differs, add `user = "<user>"`
 under `[server.executor]` and use `user@host` in the target's two SSH settings.
 
 ### 3.2. Runtime settings
 
-In `config/machines.rhino.toml`, also check:
+In `config/machines.gh200.toml`, also check:
 
 #### 3.2.1. Set the CUDA toolkit path
 
 `[server.executor.env] CUDA_HOME` points to your CUDA toolkit. The checked-in
-`/usr/local/cuda-12.4/` matches Rhino.
+`/usr/local/cuda-12.4/` matches the reference GH200.
 
 #### 3.2.2. Set the runtime library path
 
@@ -241,8 +242,8 @@ The leading `.` is the deployed bundle.
 
 #### 3.2.3. Set the RDMA device, GIDs, and polling core
 
-`[server] config` uses `dev=mlx5_1;gid=3;cpu_pin=24;rt=0`, and `[server] fabric` is
-`192.168.1.10`. HSB and BALBOA use GID 5 in their `coproc_config` entries.
+`[server] config` uses `dev=mlx5_1;gid=3;cpu_pin=24;rt=0`, and `[server] fabric` is your
+`$ERNIC_IP`. HSB and BALBOA use GID 5 in their `coproc_config` entries.
 Update the device, GIDs, polling core, and fabric address together if your wiring differs.
 
 #### 3.2.4. Set the executor privileges
@@ -260,7 +261,7 @@ If the GH200 does not run the reference Ubuntu 22.04 environment, refresh its ta
 
 ```bash
 cd "$XBUILD_DIR"
-make probe TARGET=rhino SSH="$SERVER"
+make probe TARGET=gh200 SSH="$SERVER"
 ```
 
 This reaches the named GH200 over SSH and updates its target description. Keep changes for
@@ -286,7 +287,7 @@ make sysroot TARGET=vpk120
 #### 4.1.2. Copy the GH200 sysroot
 
 ```bash
-make sysroot TARGET=rhino
+make sysroot TARGET=gh200
 ```
 
 ### 4.2. LLVM for the two executors
@@ -305,7 +306,7 @@ make catalyst-llvm TARGET=vpk120 CATALYST="$CATALYST_ROOT"
 #### 4.2.2. Build LLVM for the GH200
 
 ```bash
-make catalyst-llvm TARGET=rhino CATALYST="$CATALYST_ROOT" LLVM_OUTDIR="$C/mlir/llvm-project/build-aarch64-rhino"
+make catalyst-llvm TARGET=gh200 CATALYST="$CATALYST_ROOT" LLVM_OUTDIR="$C/mlir/llvm-project/build-aarch64-gh200"
 ```
 
 ### 4.3. Components
@@ -325,15 +326,15 @@ make build TARGET=vpk120 CATALYST="$CATALYST_ROOT" COMPONENT="executor rt-capi r
 #### 4.3.2. Build the GH200 runtime and backends
 
 ```bash
-make build TARGET=rhino CATALYST="$CATALYST_ROOT" COMPONENT="rt-transport rt-capi rtd-null-qubit \
+make build TARGET=gh200 CATALYST="$CATALYST_ROOT" COMPONENT="rt-transport rt-capi rtd-null-qubit \
     cpu-verbs-controller cpu-verbs-coprocessor echo-coprocessor-cpu steane-coprocessor-cpu gpu-coprocessor"
 ```
 
 #### 4.3.3. Build the GH200 executor
 
 ```bash
-make build TARGET=rhino CATALYST="$CATALYST_ROOT" COMPONENT=executor \
-    COMPONENT_CMAKE_ARGS="-DCATALYST_SRC=$C -DLLVM_DIR=$C/mlir/llvm-project/build-aarch64-rhino/lib/cmake/llvm"
+make build TARGET=gh200 CATALYST="$CATALYST_ROOT" COMPONENT=executor \
+    COMPONENT_CMAKE_ARGS="-DCATALYST_SRC=$C -DLLVM_DIR=$C/mlir/llvm-project/build-aarch64-gh200/lib/cmake/llvm"
 ```
 
 `gpu-coprocessor` contains GPU code that nvcc does not cross-compile. xbuild builds it on the
@@ -345,18 +346,18 @@ GH200 over SSH with the HIP installation from step 2, then copies the library ba
 
 ```bash
 cd "$CATALYST_ROOT"
-make bundle TARGET=rhino BUNDLE=rhino-bundle CATALYST="$CATALYST_ROOT"
+make bundle TARGET=gh200 BUNDLE=gh200-bundle CATALYST="$CATALYST_ROOT"
 make bundle TARGET=vpk120 BUNDLE=vpk-bundle CATALYST="$CATALYST_ROOT"
 ```
 
-#### 4.4.2. Check the Rhino bundle and GPU backend
+#### 4.4.2. Check the GH200 bundle and GPU backend
 
 ```bash
-ls build/bundles/rhino-bundle
-ls build/bundles/rhino-bundle/libcatalyst_transport_gpu_verbs_coprocessor.so
+ls build/bundles/gh200-bundle
+ls build/bundles/gh200-bundle/libcatalyst_transport_gpu_verbs_coprocessor.so
 ```
 
-The Rhino bundle must contain the GPU backend for GPU experiments. `rhino-bundle` warns that
+The GH200 bundle must contain the GPU backend for GPU experiments. `gh200-bundle` warns that
 `libcudart.so.12` is missing; that is expected because the GH200 supplies the CUDA runtime.
 It must be visible to the loader there, through its system configuration or `LD_LIBRARY_PATH`.
 
@@ -378,7 +379,7 @@ On the GH200, append these arguments to the existing `GRUB_CMDLINE_LINUX` in
 isolcpus=managed_irq,domain,24-26 nohz_full=24-26 rcu_nocbs=24-26 irqaffinity=0-23,27-71
 ```
 
-These are Rhino's CPU lists. The coprocessor polls on core 24, matching `cpu_pin=24` in the
+These are the reference GH200's CPU lists. The coprocessor polls on core 24, matching `cpu_pin=24` in the
 machines file.
 
 #### 5.1.2. Apply the boot configuration and reboot
@@ -403,10 +404,12 @@ It must be the only device in its IOMMU group.
 
 #### 5.3.1. Inspect the IOMMU group
 
-Inspect the group before unbinding:
+Set the port and your two fabric addresses, then inspect the group before unbinding:
 
 ```bash
-NIC=enp1s0f1np1
+NIC=$(ls /sys/class/infiniband/mlx5_1/device/net)   # the port to the board
+ERNIC_IP="<GH200 address for ERNIC>"
+HSB_IP="<GH200 address for HSB and BALBOA>"
 PCI=$(basename "$(readlink /sys/class/net/$NIC/device)")
 GRP=$(basename "$(readlink /sys/class/net/$NIC/device/iommu_group)")
 ls /sys/kernel/iommu_groups/$GRP/devices
@@ -415,15 +418,15 @@ ls /sys/kernel/iommu_groups/$GRP/devices
 #### 5.3.2. Rebind the NIC and restore its fabric addresses
 
 If the group contains only that PCI device, rebind it, restore its addresses, and apply the
-runtime tuning. Add `192.168.1.10` first so it gets GID 3, then `192.168.0.1` for GID 5:
+runtime tuning. Add `$ERNIC_IP` first so it gets GID 3, then `$HSB_IP` for GID 5:
 
 ```bash
 echo $PCI     | sudo tee /sys/bus/pci/drivers/mlx5_core/unbind
 echo identity | sudo tee /sys/kernel/iommu_groups/$GRP/type
 echo $PCI     | sudo tee /sys/bus/pci/drivers/mlx5_core/bind
 sudo ip link set $NIC mtu 4200 up
-sudo ip addr add 192.168.1.10/24 dev $NIC
-sudo ip addr add 192.168.0.1/24 dev $NIC
+sudo ip addr add "$ERNIC_IP/24" dev $NIC
+sudo ip addr add "$HSB_IP/24" dev $NIC
 ```
 
 #### 5.3.3. Apply runtime tuning
@@ -449,28 +452,29 @@ With the ERNIC image, the board needs a permanent ARP entry for the GH200.
 Run on the GH200:
 
 ```bash
-cat /sys/class/net/enp1s0f1np1/address
+cat /sys/class/net/$NIC/address
 ```
 
 #### 5.4.2. Install the permanent ARP entry
 
-Run this **on the board**, replacing `<MAC>` with that address:
+Run this **on the board**, replacing `<ERNIC_IP>` with the GH200's ERNIC address and `<MAC>` with
+that MAC address:
 
 ```bash
-sudo ip neigh replace 192.168.1.10 lladdr "<MAC>" dev eth0 nud permanent
+sudo ip neigh replace "<ERNIC_IP>" lladdr "<MAC>" dev eth0 nud permanent
 ```
 
 ## 6. Session setup and checks
 
 ### 6.1. Activate the environment
 
-In each new shell **on the build machine**, select the Catalyst environment, Rhino machines
+In each new shell **on the build machine**, select the Catalyst environment, GH200 machines
 file, and the bundles built above:
 
 ```bash
 export CATALYST_ROOT=~/catalyst
 source "$CATALYST_ROOT/.venv/bin/activate"
-export BACKLINE_MACHINES=config/machines.rhino.toml
+export BACKLINE_MACHINES=config/machines.gh200.toml
 export BACKLINE_BUNDLES=~/backline/config/xbuild/build/bundles
 ```
 
@@ -479,15 +483,16 @@ export BACKLINE_BUNDLES=~/backline/config/xbuild/build/bundles
 
 ### 6.2. Check the running machines
 
-On the GH200, check the following before running experiments:
+On the GH200, with `NIC`, `ERNIC_IP` and `HSB_IP` set as in
+[step 5.3.1](#531-inspect-the-iommu-group), check the following before running experiments:
 
 | Check | Expect |
 |---|---|
-| `ip -br link show enp1s0f1np1` | `UP` |
-| `ip -br addr show enp1s0f1np1` | `192.168.1.10/24 192.168.0.1/24` |
+| `ip -br link show $NIC` | `UP` |
+| `ip -br addr show $NIC` | `$ERNIC_IP/24 $HSB_IP/24` |
 | `cat /sys/devices/system/cpu/isolated` | `24-26` |
 | `cat /sys/devices/system/cpu/nohz_full` | `24-26` |
-| `cat /sys/class/net/enp1s0f1np1/device/iommu_group/type` | `identity` |
+| `cat /sys/class/net/$NIC/device/iommu_group/type` | `identity` |
 | `sysctl kernel.sched_rt_runtime_us kernel.numa_balancing` | `-1` and `0`, respectively |
 | `cat /sys/kernel/mm/transparent_hugepage/enabled` | `[never]` selected |
 | `pgrep -af catalyst-executor` | No executors left from your previous runs |
@@ -500,7 +505,7 @@ and reboot.
 ### 6.3. Select and check the board image
 
 Check the board using [`INSTALL_FPGA.md`](INSTALL_FPGA.md#2-check-the-image), and set
-`[vpk] bitstream` in `config/machines.rhino.toml` to the installed image: `"hsb"`, `"balboa"`,
+`[vpk] bitstream` in `config/machines.gh200.toml` to the installed image: `"hsb"`, `"balboa"`,
 or `"ernic"`. Reapply the ERNIC ARP entry whenever that image is booted.
 
 The installation is ready for the commands in

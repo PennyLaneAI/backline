@@ -40,7 +40,7 @@ This runs `plot_latency.py` once per CSV and writes the PNGs to `figures/`.
 Prepare the benchmark environment:
 
 ```bash
-BOARD=petalinux@192.168.3.15
+BOARD=petalinux@vpk120.example
 C=cpu-echo  # repeat for every responder
 ```
 

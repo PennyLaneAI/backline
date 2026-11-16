@@ -275,7 +275,7 @@ Keep these settings consistent:
 
 | Setting | Must agree |
 |---|---|
-| SSH destination | `host=` in the target's `SYSROOT_PROVIDER_ARGS` and `[server.executor] host` must reach the same machine. Both default to `192.168.3.14` |
+| SSH destination | `host=` in the target's `SYSROOT_PROVIDER_ARGS` and `[server.executor] host` must reach the same machine. Both default to the placeholder `server.example` |
 | Bundle | `[server.executor] deploy = ["threadripper-bundle"]` must name the bundle built for that target |
 | GPU | `TARGET_GPU_ARCH` must match the server's GPU, for example `gfx90a` for AMD or `sm_80` for NVIDIA; the spelling selects the vendor |
 
@@ -321,7 +321,7 @@ Run these steps on the build machine with Catalyst's virtual environment active.
 The sysroot contains the headers and libraries the build will link against:
 
 ```bash
-SERVER=you@192.168.3.14                  # your server's SSH destination
+SERVER=you@server.example  # your server's SSH destination
 cd ~/backline/config/xbuild
 make sysroot TARGET=threadripper SYSROOT_PROVIDER_ARGS="host=$SERVER port=22"
 ```

@@ -31,13 +31,13 @@ in [`data/data-runs/20261105/`](../data/data-runs/20261105/).
 ## 1. Prepare a session
 
 Follow [Session setup and checks](../INSTALL_GH200.md#6-session-setup-and-checks) to activate
-Catalyst's virtual environment, select `config/machines.rhino.toml` and the built bundles,
+Catalyst's virtual environment, select `config/machines.gh200.toml` and the built bundles,
 and check the GH200 and board. Reapply the [boot-time tuning](../INSTALL_GH200.md#53-after-every-gh200-boot)
 after a GH200 reboot and the [ERNIC ARP entry](../INSTALL_GH200.md#54-after-every-ernic-board-boot)
 after booting that board image.
 
 The board carries one image at a time. Follow [`INSTALL_FPGA.md`](../INSTALL_FPGA.md)
-to boot and check it, then set `[vpk] bitstream` in `config/machines.rhino.toml` to the image:
+to boot and check it, then set `[vpk] bitstream` in `config/machines.gh200.toml` to the image:
 `"hsb"`, `"balboa"`, or `"ernic"`.
 
 ## 2. Run
@@ -55,7 +55,7 @@ Then the four cells. The board writes each hw-loop trace, so copy it off after t
 ```bash
 cd ~/backline/benchmarks
 B=$(python3 -c 'import placement; print(placement.VPK_BITSTREAM)')
-BOARD=petalinux@192.168.3.15    # your board's SSH account and management address
+BOARD=petalinux@vpk120.example  # your board's SSH account and management address
 for P in cpu-echo gpu-echo; do
   ./bench.py --ctrl hw-handshake-sw-loop --coproc "$P" --iters 1000000 -o "$B.sw-for-loop.$P.csv"
   ./bench.py --ctrl hw-handshake-hw-loop --coproc "$P" --iters 1000000 --pacer-freq 0 \
@@ -79,8 +79,8 @@ before comparing them with the table above.
 | The handshake never completes, and `ping 192.168.0.2` from the GH200 gets no reply | The link to the board is down |
 | The next run hangs, or picks a port other than 9811 | An executor is left from an earlier run: `pgrep -af catalyst-executor` on the GH200 and on the board, then kill it |
 | `bench.py` ends in a segmentation fault after the coprocessor fails | It leaves executors running on the GH200 and on the board. Kill them before the next run |
-| ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for 192.168.1.10 ([ERNIC board setup](../INSTALL_GH200.md#54-after-every-ernic-board-boot)) |
+| ERNIC: the handshake completes, then nothing | The board has no permanent ARP entry for the GH200's ERNIC address ([ERNIC board setup](../INSTALL_GH200.md#54-after-every-ernic-board-boot)) |
 | BALBOA: every round times out after an earlier run failed | A failed session leaves BALBOA's send path stuck until the board is programmed again. Run `make boot` again, and start the next run with `--iters 1` |
 | A result that does not match | Run the checks in [`INSTALL_FPGA.md`](../INSTALL_FPGA.md#2-check-the-image) |
-| GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `rhino-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
+| GPU runs die with `libcatalyst_transport_gpu_verbs_coprocessor.so: cannot open shared object file` | The GPU backend is not in `gh200-bundle` ([bundle installation](../INSTALL_GH200.md#44-bundles)) |
 | Every 64th round is slower than the others | The executor loads an older libmlx5. `LD_LIBRARY_PATH` does not reach the rdma-core v65 build; check the [runtime configuration](../INSTALL_GH200.md#3-configure-the-build-and-runtime) |

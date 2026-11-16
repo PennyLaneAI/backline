@@ -2,7 +2,7 @@
 # Low-jitter settings for the coprocessor host's polling cores. Run as root after every boot, with
 # the cores already isolated on the kernel command line (isolcpus, nohz_full, rcu_nocbs).
 #
-#   sudo ./rt_tune.sh <isolated-cpus> <nic>      e.g. sudo ./rt_tune.sh 24,25,26 enp1s0f1np1
+#   sudo ./rt_tune.sh <isolated-cpus> <nic>      e.g. sudo ./rt_tune.sh 24,25,26 "$NIC"
 set -euo pipefail
 
 ISO="${1:?usage: rt_tune.sh <isolated-cpu-list e.g. 4,16> <nic-ifname>}"

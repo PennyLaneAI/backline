@@ -56,7 +56,7 @@ machines file itself.
 |---|---|---|
 | `CATALYST_ROOT` | demos 1 and 1a | the Catalyst tree. They load the Steane decoder from `$CATALYST_ROOT/runtime/build/lib` |
 | `BACKLINE_BUNDLES` | demos 2 to 5 | the directory holding the bundles, one entry per bundle name. Each remote node deploys the bundle named there. A relative path resolves against the repository root |
-| `BACKLINE_MACHINES` | demos 2 to 5 | the machines file to read instead of `config/machines.toml`, such as `config/machines.rhino.toml`. A relative path resolves against the repository root |
+| `BACKLINE_MACHINES` | demos 2 to 5 | the machines file to read instead of `config/machines.toml`, such as `config/machines.gh200.toml`. A relative path resolves against the repository root |
 
 They are read on every run, not once at install, so export them from your shell profile or set them
 on each command.
