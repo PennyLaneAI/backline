@@ -141,7 +141,8 @@ value is refused.
 ## Choosing the pacer cadence
 
 `--pacer-freq`, `--pacer-span` and `--pacer-seed` are in core-clock cycles at 200 MHz, so one cycle
-is 5 ns and one millisecond is 200,000 cycles.
+is 5 ns and one millisecond is 200,000 cycles. The clock is the bitstream's `clk_mhz`, which is
+250 MHz under Holoscan Sensor Bridge and BALBOA.
 
 The fabric computes each interval as `freq + (lfsr & span)`, so `span` is a bit mask rather than a
 width: it has to be `2^N-1`. Most ranges are therefore not representable exactly.
@@ -173,6 +174,6 @@ It warns when a choice will not behave: an upper bound past the host's 5 s colle
 `kErrStuck` rather than waiting, a width error over 25% means the mask is the wrong tool for that
 range, and `--iters` turns the average interval into a wall-clock estimate.
 
-The `demo_freq` / `demo_span` it recommends are the firmware's ABI key names, which is what
+The `pacer_freq` / `pacer_span` it recommends are the backend's config keys, which is what
 [`placement.py`](placement.py) writes into the config string. On the command
 line they are `--pacer-freq` and `--pacer-span`, with the same values.

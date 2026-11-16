@@ -94,11 +94,16 @@ ifeq ($(COMPONENT_REQUIRES_NATIVE),yes)
     _TARGET_TRIPLE_CANON := $(TARGET_TRIPLE)
   endif
   ifneq ($(_TARGET_TRIPLE_CANON),$(_HOST_TRIPLE_CANON))
-    $(error Component '$(COMPONENT_NAME)' is marked COMPONENT_REQUIRES_NATIVE=yes, \
-      but target '$(TARGET_NAME)' is $(TARGET_TRIPLE) ($(_TARGET_TRIPLE_CANON)) while this \
-      host is $(HOST_TRIPLE) ($(_HOST_TRIPLE_CANON)).$(NEWLINE)\
-      This component uses a vendor compiler that cannot cross-compile. Build it on \
-      a machine of the target architecture, or exclude it from this target's bundle.)
+    ifeq ($(strip $(TARGET_BUILD_HOST)),)
+      $(error Component '$(COMPONENT_NAME)' is marked COMPONENT_REQUIRES_NATIVE=yes, \
+        but target '$(TARGET_NAME)' is $(TARGET_TRIPLE) ($(_TARGET_TRIPLE_CANON)) while this \
+        host is $(HOST_TRIPLE) ($(_HOST_TRIPLE_CANON)).$(NEWLINE)\
+        This component uses a vendor compiler that cannot cross-compile. Name a machine of \
+        the target architecture in TARGET_BUILD_HOST and it is built there over ssh, or \
+        exclude it from this target's bundle.)
+    endif
+    # Built on that machine by tools/build-on-host.sh; see the recipe below.
+    _BUILD_ON_HOST := $(TARGET_BUILD_HOST)
   endif
 endif
 
@@ -188,6 +193,11 @@ CC_INVOKE  := $(if $(strip $(COMPONENT_CC_OVERRIDE)),$(COMPONENT_CC_OVERRIDE),$(
 # spellings, so an ordinary C++ component on the same machine is unaffected.
 _USES_GPU_DIALECT := $(filter yes,$(COMPONENT_REQUIRES_GPU_ARCH))
 
+# The vendor compiler from the install TARGET_GPU_SDK names, rather than from PATH.
+ifneq ($(and $(_USES_GPU_DIALECT),$(strip $(TARGET_GPU_SDK))),)
+  CXX_INVOKE := $(TARGET_GPU_SDK)/bin/$(CXX_INVOKE)
+endif
+
 # A native component using a vendor compiler must not be handed cross flags: the triple flag
 # and the sysroot are meaningless (and often rejected) there. The C++ standard stays, because
 # it describes the source — C++20 code must still compile as C++20 under a vendor compiler,
@@ -225,6 +235,7 @@ _SONAME_FLAG = $(if $(_USES_GPU_DIALECT),$(call TARGET_GPU_SONAME_FLAG,$(1)),$(c
 # where flags belong and where `make show-target` can print it. As a literal here it was
 # appended after the target's own flags and silently beat TARGET_CXXFLAGS=-O3.
 ALL_CXXFLAGS := $(_INHERITED_CXX_FLAGS) $(_INHERITED_SYSROOT_CXX) -fPIC \
+                $(if $(_USES_GPU_DIALECT),$(TARGET_GPU_SDK_FLAG)) \
                 $(_INCLUDE_FLAGS) $(COMPONENT_CXXFLAGS)
 
 # COMPONENT_CFLAGS is documented, so it must actually reach the compiler. Sources are
@@ -335,7 +346,21 @@ _STAMP_COMPILER = @{ \
 	  printf 'linker_bin=%s\n' "$(if $(_LINKER_BIN),$$(command -v $(_LINKER_BIN) 2>/dev/null || echo '$(_LINKER_BIN) (not found on PATH)'),compiler default)"; \
 	} > "$(OUT_DIR)/.crossbuild-built-with" 2>/dev/null || true
 
-ifeq ($(COMPONENT_KIND),shared-library)
+# The directories a build on TARGET_BUILD_HOST needs copied there: headers and sources.
+_HOST_SYNC_DIRS := $(sort $(COMPONENT_INCLUDES) $(patsubst %/,%,$(dir $(COMPONENT_SOURCES))) \
+                          $(COMPONENT_CMAKE_SOURCE_DIR))
+
+ifneq ($(_BUILD_ON_HOST),)
+
+$(ARTIFACT): $(COMPONENT_SOURCES) $(_DEP_ARTIFACTS) $(_REBUILD_ON) | $(OUT_DIR)
+	@$(TOOLS_DIR)/build-on-host.sh "$(ROOT_DIR)" "$(TARGET_NAME)" "$(COMPONENT_NAME)" \
+	    "$(_BUILD_ON_HOST)" "$(OUT_DIR)" \
+	    "$(foreach r,$(COMPONENT_SOURCE_ROOTS),$(r)=$($(r)))" "$(_HOST_SYNC_DIRS)" \
+	    "$(if $(strip $(GPU_ARCH)),GPU_ARCH=$(GPU_ARCH))"
+	@touch $@
+	@echo "[$(TARGET_NAME)/$(COMPONENT_NAME)] -> $@"
+
+else ifeq ($(COMPONENT_KIND),shared-library)
 
 $(ARTIFACT): $(COMPONENT_SOURCES) $(_DEP_ARTIFACTS) $(_REBUILD_ON) | $(OUT_DIR)
 	@$(TOOLS_DIR)/sysroot-inspect.sh probe "$(SYSROOT_DIR)" "$(TARGET_TRIPLE)"
@@ -443,6 +468,7 @@ component-clean:
 component-info:
 	@echo "component : $(COMPONENT_NAME)  ($(COMPONENT_KIND))"
 	@echo "target    : $(TARGET_NAME)  [$(TARGET_TRIPLE)]"
+	@echo "built on  : $(if $(_BUILD_ON_HOST),$(_BUILD_ON_HOST) (TARGET_BUILD_HOST; the compile line below runs there),this host)"
 	@echo "artifact  : $(ARTIFACT)"
 	@echo "sources   : $(COMPONENT_SOURCES)"
 	@echo "depends   : $(if $(strip $(COMPONENT_DEPENDS)),$(COMPONENT_DEPENDS),none)"

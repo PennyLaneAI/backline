@@ -22,7 +22,11 @@ import pennylane as qp
 
 # --------------------------------------------- config ---------------------------------------------
 
-_MACHINES_TOML = Path(__file__).resolve().parent.parent / "config" / "machines.toml"
+_ROOT = Path(__file__).resolve().parent.parent
+# BACKLINE_MACHINES names another machines file relative to the repository root.
+_MACHINES_TOML = _ROOT / Path(
+    os.environ.get("BACKLINE_MACHINES") or "config/machines.toml"
+).expanduser()
 
 if not _MACHINES_TOML.is_file():
     raise SystemExit(
@@ -48,7 +52,7 @@ if not _bundles:
         f"    export {_BUNDLES_ENV}=/path/to/that/directory"
     )
 
-_BUNDLES = _MACHINES_TOML.parent.parent / Path(_bundles).expanduser()
+_BUNDLES = _ROOT / Path(_bundles).expanduser()
 if not _BUNDLES.is_dir():
     raise SystemExit(f"{_BUNDLES_ENV}={_bundles!r} is not a directory")
 
@@ -67,13 +71,26 @@ def _executor(machine, port):
 
 # -------------------------------------------- machines --------------------------------------------
 
-_SERVER_CFG = _CONFIG["server"]["config"]
+VPK_BITSTREAM = _CONFIG["vpk"]["bitstream"]
+"""The bitstream the board carries, which decides its controller and how the server is reached."""
 
-_SERVER_ENDPOINT = qp.Endpoint(_CONFIG["server"]["fabric"], OOB_PORT)
+_BOARD = _CONFIG["vpk"][VPK_BITSTREAM]
 
-_VPK_CFG = _CONFIG["vpk"]["config"]
+# Every node on the server is a coprocessor answering the board, so it takes the board's link: the
+# server's own unless the bitstream's table names another.
+_SERVER_CFG = _BOARD.get("coproc_config", _CONFIG["server"]["config"])
 
-_VPK_CFG_SWHS = _CONFIG["vpk"]["config_swhs"]
+_SERVER_ENDPOINT = qp.Endpoint(
+    _BOARD.get("coproc_endpoint", _CONFIG["server"]["fabric"]), OOB_PORT
+)
+
+_VPK_CFG = _BOARD["config"]
+
+# None where the bitstream has no software-handshake arrangement.
+_VPK_CFG_SWHS = _BOARD.get("config_swhs")
+
+VPK_CLK_MHZ = _BOARD["clk_mhz"]
+"""The engine's core clock, which the pacer knobs count."""
 
 # Three ways to drive the same board, so they share one executor and are never used together.
 _VPK_EXEC = _executor("vpk", _PORTS["vpk"])
@@ -91,6 +108,9 @@ _ECHO_CPU_LIB = "libecho_coprocessor_cpu.so"
 # filename keeps the device's older fpga_verbs spelling, being what the deployed bundles carry.
 _SWHS_CTRL_LIB = "libcatalyst_transport_fpga_verbs_controller.so"
 
+VPK_CTRL_LIB = f"libcatalyst_transport_{_BOARD['backend']}_controller.so"
+"""The engine-driven controller for the board's bitstream."""
+
 # ------------------------------------- node configurations ----------------------------------------
 
 REMOTE_CPU_COPROC = dict(
@@ -102,7 +122,7 @@ REMOTE_CPU_COPROC = dict(
     },
     init_args={"config": _SERVER_CFG},
 )
-"""A coprocessor on the x86_64 server's CPU, decoding as a host function."""
+"""A coprocessor on the server's CPU, decoding as a host function."""
 
 REMOTE_GPU_COPROC = dict(
     remote=True,
@@ -117,9 +137,10 @@ REMOTE_VPK_CTRL = dict(
     remote=True,
     executor_options=_VPK_EXEC,
     hardware="fpga",
+    backend=_BOARD["backend"],
     init_args={"config": _VPK_CFG},
 )
-"""The controller on the VPK120 board: the hwhs engine posts the syndrome and detects the reply
+"""The controller on the VPK120 board: its engine posts the syndrome and detects the reply
 itself, the host issuing one round at a time (``CTRL=hw-handshake-sw-loop``)."""
 
 REMOTE_VPK_CTRL_SWHS = dict(
@@ -134,10 +155,11 @@ reply (``CTRL=sw-handshake``)."""
 # The PL pacer drives the rounds instead of the host. One W1P write latches the run and the fabric
 # emits a send every `freq + (lfsr & span)` core-clock cycles by itself, which keeps host scheduling
 # jitter out of the tail being measured. Every knob is in raw hardware units, cycles and bit masks,
-# what the registers take. The core clock is 200 MHz, so 1 cycle = 5 ns and 1 ms = 200_000 cycles.
+# what the registers take. The core clock is VPK_CLK_MHZ, so 1 ms is 1000 * VPK_CLK_MHZ cycles:
+# 200_000 on ERNIC and 250_000 on HSB and BALBOA.
 
 # Defaults for the knobs, shared with the benchmark's command line so both agree.
-PACER_FREQ_DEFAULT = 0  # cycles between sends; 0 = back-to-back, and 200_000 = 1 ms apart
+PACER_FREQ_DEFAULT = 0  # core-clock cycles between sends; 0 = back-to-back
 PACER_SPAN_DEFAULT = 0  # jitter mask, 2^N-1, where 0 = a fixed interval
 PACER_SEED_DEFAULT = 1  # a fixed seed gives a repeatable interval sequence
 # Absolute, and on the board: the controller writes it and the controller runs on the VPK120.
@@ -149,14 +171,15 @@ PACER_TRACE_OUT_DEFAULT = "/tmp/rtt_trace.csv"
 PACER_TRACE_PA = 0x9200_0000  # must match assign_bd_address for the trace axi_bram_ctrl
 PACER_TRACE_ENTRIES = 1 << 20  # must match hw_handshake's C_TRACE_AW
 
-# The engine reads syndromes from 0x8000_0000 and expected replies from one PACER_SYN_DEPTH above
+# The engine reads syndromes from 0x8000_0000 and expected replies from one table size above
 # it, so BRAM has to hold both. Slot i holds Payload{ value = i+1, decoder_id = 0 }, and its
 # seq_num does not matter, because the engine overwrites that with its own round counter on the
 # way out (hh_orchestrator S_DAT_ISS). The table may be shorter than the run, since only the data
 # repeats.
-from syndrome_table import (
-    SYN_DEPTH as PACER_SYN_DEPTH,
-)  # noqa: E402  pylint: disable=wrong-import-position
+from syndrome_table import (  # noqa: E402  pylint: disable=wrong-import-position
+    SLOT as PACER_SLOT_BYTES,
+    SLOTS as PACER_SLOTS_DEFAULT,
+)
 
 
 def paced_controller(
@@ -165,6 +188,7 @@ def paced_controller(
     span=PACER_SPAN_DEFAULT,
     seed=PACER_SEED_DEFAULT,
     trace_out=PACER_TRACE_OUT_DEFAULT,
+    slots=PACER_SLOTS_DEFAULT,
 ):
     """The VPK120 controller with the PL pacer driving the rounds and recording every one.
 
@@ -174,6 +198,7 @@ def paced_controller(
         seed: LFSR seed for the jitter.
         rounds: rounds to run before the pacer stops.
         trace_out: where on the board to write the trace.
+        slots: entries in the pacer's table, which it sends in turn and repeats.
 
     Returns:
         dict: spread into a ``qp.Controller``.
@@ -194,16 +219,15 @@ def paced_controller(
             f"{span + 1}, and they are not contiguous. Run pacer_span.py to pick one."
         )
 
-    # The backend calls this mode "demo" and its keys keep that spelling, being the firmware's ABI.
     config = (
-        _VPK_CFG + ";demo=hw"
-        + (f";demo_freq={freq}" if freq else "")
-        + (f";demo_span=0x{span:X}" if span else "")
-        + f";demo_seed={seed}"
-        + f";demo_cnt={rounds}"
-        + f";demo_depth={PACER_SYN_DEPTH}"
-        + f";demo_trace=0x{PACER_TRACE_PA:X}"
-        + f";demo_trace_out={trace_out}"
+        _VPK_CFG + ";pacer=hw"
+        + (f";pacer_freq={freq}" if freq else "")
+        + (f";pacer_span=0x{span:X}" if span else "")
+        + f";pacer_seed={seed}"
+        + f";pacer_cnt={rounds}"
+        + f";pacer_depth={slots * PACER_SLOT_BYTES}"
+        + f";pacer_trace=0x{PACER_TRACE_PA:X}"
+        + f";pacer_trace_out={trace_out}"
     )
     return {
         **REMOTE_VPK_CTRL,

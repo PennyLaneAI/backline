@@ -89,8 +89,8 @@ def main(argv=None):
     # ---- fixed interval -------------------------------------------------------
     if a.high is None:
         print(f"fixed interval (no jitter), {clk:g} MHz\n")
-        print(f"  demo_freq={lo}        # {fmt_time(lo, clk)}")
-        print(f"  demo_span=0")
+        print(f"  pacer_freq={lo}       # {fmt_time(lo, clk)}")
+        print(f"  pacer_span=0")
         if a.iters:
             print(f"\n  {a.iters} rounds ~ {fmt_time(lo * a.iters, clk)}")
         return 0
@@ -132,8 +132,8 @@ def main(argv=None):
     ah = best["actual_hi"]
     mean = (lo + ah) / 2
     print(f"\nrecommended setting:")
-    print(f"  demo_freq={lo}")
-    print(f"  demo_span=0x{best['span']:X}")
+    print(f"  pacer_freq={lo}")
+    print(f"  pacer_span=0x{best['span']:X}")
     print(
         f"  -> actual {fmt_time(lo, clk)} ~ {fmt_time(ah, clk)},"
         f"average {fmt_time(mean, clk)} (uniform distribution)"

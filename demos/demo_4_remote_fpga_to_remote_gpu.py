@@ -12,17 +12,18 @@ aside.
 The controller is the VPK120's aarch64 processor driving a hardware handshake engine in the FPGA
 fabric. The engine posts the syndrome and detects the reply itself, driving ERNIC™, the RDMA NIC in
 the fabric beside it, so the handshake is done in hardware and the round trip is timestamped there
-rather than around a host call.
+rather than around a host call. ``[vpk] bitstream`` in ``config/machines.toml`` says which NIC
+the board carries, ERNIC or NVIDIA's Holoscan Sensor Bridge.
 
 ``qec_code="steane"`` means the stabilizer measurements and the decode are inserted by the compiler.
 """
 import pennylane as qp
 
-from placement import REMOTE_GPU_COPROC, REMOTE_VPK_CTRL
+from placement import REMOTE_VPK_CTRL, REMOTE_VPK_GPU_COPROC
 
 ctrl = qp.Controller(name="fpga-controller", **REMOTE_VPK_CTRL)
 coproc = qp.Coprocessor(name="gpu-coproc", coprocessor_fn="gpu_steane_launcher",
-                        **REMOTE_GPU_COPROC)
+                        **REMOTE_VPK_GPU_COPROC)
 dev = qp.Backline(controller=ctrl, coprocessors=[coproc], transport="rdma", qec_code="steane")
 
 

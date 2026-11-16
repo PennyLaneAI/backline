@@ -622,9 +622,20 @@ see but the build cannot use.
 
 ### `is marked COMPONENT_REQUIRES_NATIVE=yes, but target ... is <triple> while this host is <triple>`
 
-That component uses a vendor compiler (HIP/CUDA) that cannot cross-compile. Build
-it on a machine of the target architecture, or drop it from that target's bundle —
-put it in `BUNDLE_OPTIONAL_COMPONENTS` so its absence is not an error.
+That component uses a vendor compiler (HIP/CUDA) that cannot cross-compile. Either
+name a machine of the target architecture in the target's description, and the
+component is built there over ssh and copied back:
+
+```
+TARGET_BUILD_HOST=<server>
+TARGET_GPU_SDK=<the HIP install on that server, if hipcc is not on its PATH>
+```
+
+or drop it from that target's bundle: put it in `BUNDLE_OPTIONAL_COMPONENTS` so its
+absence is not an error.
+
+`.crossbuild-built-with` records which compiler built the library, and `make bundle`
+copies that into `BUNDLE-RECEIPT.txt`.
 
 ---
 
