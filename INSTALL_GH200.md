@@ -49,7 +49,7 @@ Use these versions for the software and board images:
 |---|---|
 | [catalyst](https://github.com/PennyLaneAI/catalyst) | `v0.16.0b2` |
 | [backline](https://github.com/PennyLaneAI/backline) | `v0.1.0b2` |
-| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `rniczh/add-balboa-hwhs-sw` ([#11](https://github.com/PennyLaneAI/backline-vpk120/pull/11)) |
+| [backline-vpk120](https://github.com/PennyLaneAI/backline-vpk120) | `v0.2.0` |
 
 Board images and provisioning live in `backline-vpk120`.
 [`INSTALL_FPGA.md`](INSTALL_FPGA.md) covers booting and checking each image.

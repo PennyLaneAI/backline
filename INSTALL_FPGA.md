@@ -10,8 +10,8 @@ drives.
 | IP | Image source | Engine clock | `[vpk] bitstream` |
 |---|---|---|---|
 | ERNIC | [backline-vpk120 `v0.1.0`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.1.0) | 200 MHz | `"ernic"` |
-| HSB | [backline-vpk120 `hsb_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/rniczh/add-balboa-hwhs-sw/hsb_hwhs) | 250 MHz | `"hsb"` |
-| BALBOA | [backline-vpk120 `balboa_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/rniczh/add-balboa-hwhs-sw/balboa_hwhs) | 250 MHz | `"balboa"` |
+| HSB | [backline-vpk120 `v0.2.0`, `hsb_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.2.0/hsb_hwhs) | 250 MHz | `"hsb"` |
+| BALBOA | [backline-vpk120 `v0.2.0`, `balboa_hwhs/`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.2.0/balboa_hwhs) | 250 MHz | `"balboa"` |
 
 Set `[vpk] bitstream` in the machines file to the image on the board.
 
@@ -44,8 +44,8 @@ Log in on the serial console as `petalinux` (and input the appropriate password)
 ### 1.2. HSB and BALBOA
 
 HSB and BALBOA have no prebuilt images, so you build them from backline-vpk120's `hsb_hwhs/` or
-`balboa_hwhs/`, on the branch `rniczh/add-balboa-hwhs-sw`
-([#11](https://github.com/PennyLaneAI/backline-vpk120/pull/11)). The build needs a Linux host with
+`balboa_hwhs/`, at the tag
+[`v0.2.0`](https://github.com/PennyLaneAI/backline-vpk120/tree/v0.2.0). The build needs a Linux host with
 Vivado 2024.2, PetaLinux 2024.2 and, for BALBOA, Vitis HLS 2024.2. It also needs AMD's ERNIC VPK120
 MRMAC reference design (`reference design VPK120_mrmac_rev_1.3.zip`), which you download from AMD.
 From the folder:
