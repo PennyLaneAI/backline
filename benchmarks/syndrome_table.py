@@ -36,6 +36,14 @@ OFF_VALUE = 0
 OFF_DECODER_ID = 8
 OFF_SEQ_NUM = 12
 
+# A CUQR frame, cudaq-realtime's: a 24-byte header, then the payload. The header is magic, fn_id
+# (a reply's status), payload length, request_id and t_ptp_ns. The engine stamps request_id, at
+# the same offset 12 as seq_num, with its round counter.
+CUQR_MAGIC = 0x43555152  # 'CUQR', a request
+CUQS_MAGIC = 0x43555153  # 'CUQS', a reply
+CUQR_HEADER = struct.Struct("<IIIIQ")
+VALUE_BYTES = 8
+
 
 # --------------------------------- what the pacer replays ----------------------------------------
 # Check bitmaps, bit i carrying check i, which build() spreads to the one-byte-per-check form a
@@ -92,12 +100,24 @@ def slot(value, decoder_id=0, seq_num=0):
     return bytes(buf)
 
 
+def cuqr_slot(value, magic, word, request_id):
+    """Pack one 64-byte slot holding a CUQR frame that carries ``value``.
+
+    ``word`` is the fn_id in a request (``CUQR_MAGIC``) and the status in a reply (``CUQS_MAGIC``).
+    """
+    buf = bytearray(SLOT)
+    CUQR_HEADER.pack_into(buf, 0, magic, word, VALUE_BYTES, request_id, 0)
+    struct.pack_into("<Q", buf, CUQR_HEADER.size, value & 0xFFFF_FFFF_FFFF_FFFF)
+    return bytes(buf)
+
+
 def build(
     syndromes,
     corrections=None,
     *,
     raw=False,
     decoder_id=0,
+    frame="bl16",
     path=None,
     slots=SLOTS,
     depth=SYN_DEPTH,
@@ -112,6 +132,11 @@ def build(
     them fills the second table with the syndromes themselves, which is the right expectation for
     an echo and the wrong one for a decoder -- a decoder without known corrections will therefore
     mismatch every round, and its comparison count means nothing.
+
+    ``frame`` is ``"bl16"`` or ``"cuqr"``, the frame both ends speak. ``decoder_id`` goes into a
+    CUQR request as its fn_id, and every expected CUQR reply has status 0. The engine compares the
+    first 16 bytes of a reply, which in a CUQR frame are its header, so a CUQR run checks the
+    status and length of every reply but not the correction it carries.
 
     The file lands in a temporary directory by default, to be deployed alongside the controller.
     """
@@ -129,8 +154,14 @@ def build(
         sent = bits if raw else spread(bits)
         back = sent if corrections is None else corrections[i % len(corrections)]
         # The slot index goes in seq_num so a BRAM dump reads in order; the engine replaces it.
-        sent_half += slot(sent, decoder_id, i + 1)
-        expected_half += slot(back, decoder_id, i + 1)
+        if frame == "cuqr":
+            sent_half += cuqr_slot(sent, CUQR_MAGIC, decoder_id, i + 1)
+            expected_half += cuqr_slot(back, CUQS_MAGIC, 0, i + 1)
+        elif frame == "bl16":
+            sent_half += slot(sent, decoder_id, i + 1)
+            expected_half += slot(back, decoder_id, i + 1)
+        else:
+            raise ValueError(f"frame {frame!r}: want 'bl16' or 'cuqr'")
 
     for half, name in ((sent_half, "syndrome"), (expected_half, "expected")):
         if len(half) != depth:

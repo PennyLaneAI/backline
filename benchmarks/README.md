@@ -110,6 +110,21 @@ only.
 That compile happens on the machine running the benchmark, which requires Triton. The precompiled
 kernels take their architecture from the bundle instead.
 
+## Frames
+
+`--frame cuqr` sends every round in cudaq-realtime's RPC frame (CUQR) instead of Backline's
+16-byte frame, by adding `frame=cuqr` to both nodes' configs. A CUQR request is a 24-byte header
+and the 8-byte syndrome, and the reply is the same size. On the board, only the HSB bitstream
+carries it.
+
+```bash
+./bench.py --ctrl hw-handshake-sw-loop --coproc cpu-echo --frame cuqr
+```
+
+Under the pacer, the engine compares the first 16 bytes of each reply. In a CUQR reply those are
+the header, so `compare_errors=0` means every reply came back with status 0 and the right length.
+The correction itself is not checked.
+
 ## Sweeping
 
 [`../scripts/sweep-bench.sh`](../scripts/sweep-bench.sh) runs every cell and collects the CSVs. Run

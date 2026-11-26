@@ -89,6 +89,11 @@ def _parse_args():
         "pacer stops after that many (default: %(default)s)",
     )
     ap.add_argument(
+        "--frame",
+        choices=("bl16", "cuqr"),
+        help="the frame both ends speak, added to both configs: bl16, or cuqr"
+    )
+    ap.add_argument(
         "--flags",
         type=integer,
         default=0,
@@ -356,6 +361,7 @@ class Run:
     oob_port: int
     flags: int  # start_benchmark flags
     iters: int
+    frame: str  # the frame both ends speak
     csv: str  # where the samples land
     decoder: str  # coprocessor decoder name; "echo" uses its built-in echo
     syndromes: list  # syndromes replayed by the pacer, or None if none are staged
@@ -444,6 +450,11 @@ def resolve(args):
             f"--ctrl {ctrl}: the board's {placement.VPK_BITSTREAM} bitstream has no such "
             f"arrangement in machines.toml"
         )
+    coproc_cfg = coproc_node["init_args"]["config"]
+    if args.frame:
+        ctrl_cfg += f";frame={args.frame}"
+        coproc_cfg += f";frame={args.frame}"
+    frame = args.frame or "bl16"
     if ctrl == PACER_CELL and decoder in _SYNDROME_TABLES:
         import syndrome_table  # pylint: disable=import-outside-toplevel
 
@@ -454,13 +465,14 @@ def resolve(args):
             syndromes,
             corrections,
             raw=packed,
+            frame=frame,
             slots=args.pacer_slots,
             depth=args.pacer_slots * syndrome_table.SLOT,
         )
         ctrl_cfg += f";pacer_table={os.path.basename(table_image)}"
 
     _check_config("controller", ctrl_cfg)
-    _check_config("coprocessor", coproc_node["init_args"]["config"])
+    _check_config("coprocessor", coproc_cfg)
 
     return Run(
         ctrl=ctrl,
@@ -469,7 +481,7 @@ def resolve(args):
         ctrl_cfg=ctrl_cfg,
         ctrl_options=ctrl_node["executor_options"],
         coproc_lib=cell["lib"],
-        coproc_cfg=coproc_node["init_args"]["config"],
+        coproc_cfg=coproc_cfg,
         coproc_options=coproc_node["executor_options"],
         coproc_name=cell["name"],
         coproc_fn=fn,
@@ -478,6 +490,7 @@ def resolve(args):
         oob_port=coproc_node["endpoint"].port,
         flags=_CTRLS[ctrl]["flags"] | args.flags,
         iters=args.iters,
+        frame=frame,
         csv=args.out or f"rtt_{coproc}_{ctrl}.csv",
         decoder=decoder,
         syndromes=syndromes,
@@ -494,7 +507,7 @@ def report_config(run):
     """Print the selected cell, and for a paced run the cadence and where the trace lands."""
     print(
         f"[config] ctrl={run.ctrl} coproc={run.coproc} bitstream={placement.VPK_BITSTREAM} "
-        f"flags={run.flags} iters={run.iters} -> {run.csv}"
+        f"frame={run.frame} flags={run.flags} iters={run.iters} -> {run.csv}"
     )
     say(f"[config] controller  {run.ctrl_lib}\n[config]   {run.ctrl_cfg}", 2)
     say(
@@ -526,7 +539,10 @@ def report_config(run):
             f"[config] table: {len(run.syndromes)} {run.decoder} syndromes "
             f"({os.path.basename(run.table_image)})"
         )
-        if run.corrections is not None:
+        if run.frame == "cuqr":
+            # The engine compares 16 bytes, which in a CUQR reply are the header.
+            print("[config] reply check: status and length only, not the correction")
+        elif run.corrections is not None:
             print("[config] reply check: expected compare_errors=0")
         else:
             print(f"[config] reply check: compare_errors={run.iters:,} expected")
@@ -544,7 +560,8 @@ def write_csv(run, rtt_ns):
     """
     with open(run.csv, "w") as f:
         f.write(
-            f"# clk_mhz={CLK_MHZ:.1f}\n# source=ctrl={run.ctrl} coproc={run.coproc}\n"
+            f"# clk_mhz={CLK_MHZ:.1f}\n"
+            f"# source=ctrl={run.ctrl} coproc={run.coproc} frame={run.frame}\n"
         )
         f.write("sample,rtt_cycles,rtt_us\n")
         for i, ns in enumerate(rtt_ns):
